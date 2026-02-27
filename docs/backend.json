@@ -1,7 +1,38 @@
 {
-  "entities": {},
-  "auth": {
-    "providers": []
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores public information about a user.",
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "age": {
+          "type": "number",
+          "description": "The user's age."
+        },
+        "gender": {
+          "type": "string",
+          "enum": ["Male", "Female"],
+          "description": "The user's gender."
+        },
+        "email": {
+            "type": "string",
+            "format": "email"
+        }
+      },
+      "required": ["username", "age", "gender"]
+    }
   },
-  "firestore": {}
+  "auth": {
+    "providers": ["google.com", "password", "phone"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile documents."
+    }
+  }
 }

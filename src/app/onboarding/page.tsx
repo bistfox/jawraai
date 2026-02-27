@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,6 +14,8 @@ import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import { User, UserRound } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { doc, setDoc } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
 
 const onboardingSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters.').max(20, 'Username must be 20 characters or less.'),
@@ -22,10 +24,20 @@ const onboardingSchema = z.object({
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { setUser } = useUser();
+  const { user, isLoading, refetchUser } = useUser();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const [gender, setGender] = useState<'Male' | 'Female' | null>(null);
   const [ageValue, setAgeValue] = useState(25);
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.replace('/'); // Not authenticated, go to login
+    }
+    if (!isLoading && user && user.username) {
+        router.replace('/dashboard'); // Already onboarded
+    }
+  }, [user, isLoading, router]);
 
   const form = useForm<z.infer<typeof onboardingSchema>>({
     resolver: zodResolver(onboardingSchema),
@@ -35,7 +47,7 @@ export default function OnboardingPage() {
     },
   });
 
-  const onSubmit = (values: z.infer<typeof onboardingSchema>) => {
+  const onSubmit = async (values: z.infer<typeof onboardingSchema>) => {
     if (!gender) {
       toast({
         title: 'Gender Required',
@@ -44,20 +56,52 @@ export default function OnboardingPage() {
       });
       return;
     }
-    setUser({ ...values, gender });
-    toast({
-      title: `Welcome, ${values.username}!`,
-      description: 'Your profile is set up. Enjoy the ride. 🔥',
-    });
-    router.push('/dashboard');
+    if (!user) {
+        toast({ title: 'Authentication Error', variant: 'destructive'});
+        return;
+    }
+
+    try {
+        const userProfile = {
+            ...values,
+            gender,
+            email: user.email // carry over email from auth
+        };
+        await setDoc(doc(firestore, 'users', user.uid), userProfile);
+        
+        // Manually update user context until it's refetched on next load
+        await refetchUser();
+
+        toast({
+          title: `Welcome, ${values.username}!`,
+          description: 'Your profile is set up. Enjoy the ride. 🔥',
+        });
+        router.push('/dashboard');
+
+    } catch (error: any) {
+        toast({
+          title: 'Error saving profile',
+          description: error.message,
+          variant: 'destructive',
+        });
+    }
   };
+  
+  if (isLoading || !user || user.username) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="h-16 w-16 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
+
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4 bg-gradient-to-br from-background via-black to-background">
       <Card className="w-full max-w-md bg-card/80 backdrop-blur-sm border-primary/20 shadow-lg shadow-primary/10">
         <CardContent className="p-8">
-          <h2 className="font-headline text-4xl text-center mb-2 text-primary">Join the Fold</h2>
-          <p className="text-center text-muted-foreground mb-8">Let's set up your profile.</p>
+          <h2 className="font-headline text-4xl text-center mb-2 text-primary">Create Your Profile</h2>
+          <p className="text-center text-muted-foreground mb-8">Just a few more details to get you started.</p>
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -83,7 +127,7 @@ export default function OnboardingPage() {
                     <FormLabel>Age: {ageValue}</FormLabel>
                     <FormControl>
                        <Slider
-                          min={13}
+                          min={18}
                           max={100}
                           step={1}
                           defaultValue={[ageValue]}
@@ -125,7 +169,7 @@ export default function OnboardingPage() {
                 </div>
               </div>
               
-              <Button type="submit" size="lg" className="w-full text-lg">Finish</Button>
+              <Button type="submit" size="lg" className="w-full text-lg">Finish Setup</Button>
             </form>
           </Form>
         </CardContent>

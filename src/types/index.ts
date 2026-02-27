@@ -1,7 +1,9 @@
 export interface User {
-  username: string;
-  age: number;
-  gender: 'Male' | 'Female';
+  uid: string;
+  email?: string | null;
+  username?: string;
+  age?: number;
+  gender?: 'Male' | 'Female';
 }
 
 export interface Message {

@@ -19,6 +19,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/lib/hooks/use-user';
 import React, { useEffect } from 'react';
+import { getAuth, signOut } from 'firebase/auth';
+
 
 const JawraLogo = () => (
     <Link href="/dashboard" className="flex items-center gap-2">
@@ -37,16 +39,21 @@ export default function MainAppLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, isLoading, setUser } = useUser();
+  const { user, isLoading } = useUser();
+  const auth = getAuth();
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (isLoading) return;
+    
+    if (!user) {
+      router.replace('/');
+    } else if (!user.username && pathname !== '/onboarding') {
       router.replace('/onboarding');
     }
-  }, [user, isLoading, router]);
+  }, [user, isLoading, router, pathname]);
 
-  const handleLogout = () => {
-    setUser(null);
+  const handleLogout = async () => {
+    await signOut(auth);
     router.push('/');
   };
   
@@ -55,7 +62,7 @@ export default function MainAppLayout({
     router.push(`/chat/${newChatId}`);
   }
 
-  if (isLoading || !user) {
+  if (isLoading || !user || (!user.username && pathname !== '/onboarding')) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="h-16 w-16 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
