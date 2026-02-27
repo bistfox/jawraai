@@ -22,7 +22,14 @@ const customAiSchema = z.object({
 });
 
 const availableProviders = [
-  'Grok', 'Gemini', 'DeepSeek', 'OpenRouter', 'GPT (OpenAI)', 'Claude', 'Groq', 'Together AI'
+  'Dhoortho (Grok)', 
+  'Mayabi (Gemini)', 
+  'Khobri (DeepSeek)', 
+  'Dalal (OpenRouter)', 
+  'Shaitan (OpenAI)', 
+  'Ghul (Claude)', 
+  'Kasai (Groq)', 
+  'Joutho (Together AI)'
 ];
 
 export default function MyAiPage() {
