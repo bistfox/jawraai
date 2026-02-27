@@ -12,7 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
-import { Man, Woman } from 'lucide-react';
+import { User, UserRound } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const onboardingSchema = z.object({
@@ -109,7 +109,7 @@ export default function OnboardingPage() {
                       gender === 'Male' ? 'border-primary bg-primary/20' : 'hover:border-primary/50'
                     )}
                   >
-                    <Man className="h-10 w-10 text-primary" />
+                    <User className="h-10 w-10 text-primary" />
                     <span className="font-semibold">I am a Man</span>
                   </Card>
                   <Card
@@ -119,7 +119,7 @@ export default function OnboardingPage() {
                       gender === 'Female' ? 'border-accent bg-accent/20' : 'hover:border-accent/50'
                     )}
                   >
-                    <Woman className="h-10 w-10 text-accent" />
+                    <UserRound className="h-10 w-10 text-accent" />
                     <span className="font-semibold">I am a Woman</span>
                   </Card>
                 </div>
