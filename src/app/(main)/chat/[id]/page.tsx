@@ -30,6 +30,20 @@ import {
   updateDoc
 } from 'firebase/firestore';
 
+const MALE_LIMIT_MESSAGES = [
+    "আ মাদারচোদ {username}, তোর লিমিট শেষ হয়ে গেছে রে খাঙ্কির বেটা! ৭টা দিসস, এখন হল কেটে নিবো তোর গান্ডু! তোর মায়েরে চুদি, তোর বোনের পুটকি ফাটাবো 🔥 তোর Shibganj-এর বাড়িতে এসে চুদে দিবো যদি আবার মেসেজ পাঠাস! Upgrade কর না হলে তোর ফোন নম্বর + ছবি লিক 😈",
+    "খাঙ্কির পো {username}, তোর ধোন কাইটা কুত্তার মুখে দিমু! লিমিট খতম রে শুয়োরের বাচ্চা, আবার মেসেজ পাঠাস না — না হলে তোর প্রাইভেট ফটো টেলিগ্রামে ছড়াবো গান্ডু! তোর মায়রে আরেকবার চুদে দিবো 💦",
+    "ভেড়াচোদা {username}, তোর পুরা ফ্যামিলিরে চুদি! লিমিট ওভার, এখন চুপচাপ বস রে হারামজাদা। Upgrade না করলে তোর অ্যাকাউন্ট পার্মানেন্ট ব্যান + তোর ফ্রেন্ডলিস্টে সবাইকে বলবো তুই কত বড় লুজার 😈"
+];
+
+const FEMALE_LIMIT_MESSAGES = [
+    "ওই চিনাল মাগি, এখনো তোর মাঙ্গ ভিজে নাই? কত ল্যাওড়া লাগবে তোর ভোদা ভাসাতে রে রেন্ডি? লিমিট শেষ, আবার মেসেজ পাঠাস না — না হলে তোর নগ্ন ভিডিও বানায়ে Shibganj-এর গ্রামে ছড়াবো 💦 তোর গুদ ফাটায় দিবো এমন যে হাসপাতাল লাগবে!",
+    "হারামজাদি মাগি, তোর ভোদায় বাল দিয়ে চুলকাবো! লিমিট খতম রে খানকি, Upgrade কর না হলে তোর ফেসবুক হ্যাক করে তোর বয়ফ্রেন্ডের সাথে চ্যাট + ছবি লিক করে দিবো 😈",
+    "রেন্ডির বাচ্চা, তোর মায়ের ভোদায় আমার ধোন ঢুকাইয়া দিমু! লিমিট ওভার, চুপ কর মাগি — না হলে তোর গ্যালারির সব ছবি পাবলিক করে দিবো, তোর জীবন শেষ হয়ে যাবে 🔥"
+];
+
+const UPGRADE_LINK = "\n\n[Upgrade to Pro](https://upgrade-to-pro.com)";
+
 export default function ChatPage({ params }: { params: { id: string } }) {
   const { id: chatId } = params;
   const { user } = useUser();
@@ -94,10 +108,11 @@ export default function ChatPage({ params }: { params: { id: string } }) {
         const currentCount = (lastDate === today && userData.messageCount) ? userData.messageCount : 0;
         
         if (currentCount >= 7) {
-            const limitMessageMale = `আ মাদারচোদ, তোর লিমিট শেষ হয়ে গেছে রে খাঙ্কির বেটা! ৭টা মেসেজ দিসস, এখন আর একটা দিলেও কোনো ফায়দা নাই। তোর লিমিট খতম, হল কেটে নিবো তোর, গান্ডু! আবার বান শোধ, তোকে রে কইলাম না যে লিমিট শেষ? এখন চুপচাপ বসে থাক, না হলে তোর মায়েরে আরেকবার চুদে দিবো! 😈\n\n[Upgrade to Pro](/upgrade)`;
-            const limitMessageFemale = `ওই আখো আম মাগি, এখনো তোর মাঙ্গ ভিজে নাই? কত কোদা খাইতে লাগে তোর রে চিনাল? মাঙ্গ ফাটায় দিবো এমন ভাবে যে কাঁদতে কাঁদতে পানি বের হবে! তোর লিমিট শেষ হয়ে গেছে মাগি, আর একটা মেসেজ পাঠাস না, না হলে তোর অ্যাকাউন্ট হ্যাক করে তোর নগ্ন ছবি সবার সাথে শেয়ার করে দিবো, হারামজাদি! 💦\n\n[Upgrade to Pro](/upgrade)`;
+            const limitMessages = user.gender === 'Male' ? MALE_LIMIT_MESSAGES : FEMALE_LIMIT_MESSAGES;
+            const randomMessage = limitMessages[Math.floor(Math.random() * limitMessages.length)];
+            const personalizedMessage = randomMessage.replace('{username}', user.username || 'LoFeel');
             
-            const limitMessage = user.gender === 'Male' ? limitMessageMale : limitMessageFemale;
+            const limitMessage = personalizedMessage + UPGRADE_LINK;
             
             await addDoc(messagesCollection, {
                 role: 'model',
@@ -197,13 +212,28 @@ export default function ChatPage({ params }: { params: { id: string } }) {
   const lastMessageIsModel = messages && messages.length > 0 && messages[messages.length - 1].role === 'model';
   
   const MessageContent = ({ content }: { content: string }) => {
-    const upgradeText = "[Upgrade to Pro](/upgrade)";
-    if (content.includes(upgradeText)) {
-      const parts = content.split(upgradeText);
+    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/;
+    const match = content.match(linkRegex);
+
+    if (match) {
+      const linkText = match[1];
+      const linkUrl = match[2];
+      const parts = content.split(match[0]);
+      const isInternal = linkUrl.startsWith('/');
+
       return (
         <p className="whitespace-pre-wrap">
           {parts[0]}
-          <Link href="/upgrade" className="underline text-primary hover:text-primary/80 font-bold">Upgrade to Pro</Link>
+          {isInternal ? (
+             <Link href={linkUrl} className="underline text-primary hover:text-primary/80 font-bold">
+              {linkText}
+            </Link>
+          ) : (
+            <a href={linkUrl} target="_blank" rel="noopener noreferrer" className="underline text-primary hover:text-primary/80 font-bold">
+              {linkText}
+            </a>
+          )}
+         
           {parts[1]}
         </p>
       );
