@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { Send, Copy, RefreshCw, Share2, Mic, Paperclip, Bot } from 'lucide-react';
 import { useUser } from '@/lib/hooks/use-user';
@@ -15,16 +15,30 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useFirestore } from '@/firebase';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import {
+  collection,
+  query,
+  orderBy,
+  addDoc,
+  serverTimestamp,
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc
+} from 'firebase/firestore';
 
-export default function ChatPage() {
+export default function ChatPage({ params }: { params: { id: string } }) {
+  const { id: chatId } = params;
   const { user } = useUser();
   const searchParams = useSearchParams();
   const initialPrompt = searchParams.get('prompt');
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const initialPromptSent = useRef(false);
+  const initialPromptHandled = useRef(false);
+  const firestore = useFirestore();
 
-  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -33,6 +47,16 @@ export default function ChatPage() {
     : { name: 'Jawra AI', avatarId: 'jawra-ai-avatar' };
   
   const personaAvatar = PlaceHolderImages.find(p => p.id === persona.avatarId);
+
+  const messagesQuery = useMemo(() => {
+    if (!user || !chatId) return null;
+    return query(
+      collection(firestore, 'users', user.uid, 'chats', chatId, 'messages'),
+      orderBy('createdAt', 'asc')
+    );
+  }, [user, chatId, firestore]);
+
+  const { data: messages, isLoading: isLoadingMessages } = useCollection<Message>(messagesQuery);
   
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -43,96 +67,89 @@ export default function ChatPage() {
     }, 100);
   };
 
+  const handleSendMessage = async (messageText: string) => {
+    if (!messageText.trim() || !user?.gender || !chatId) return;
+
+    setInput('');
+    const userMessageContent = messageText;
+
+    const messagesCollection = collection(firestore, 'users', user.uid, 'chats', chatId, 'messages');
+    await addDoc(messagesCollection, {
+      role: 'user',
+      content: userMessageContent,
+      createdAt: serverTimestamp(),
+    });
+
+    setIsLoading(true);
+
+    try {
+      const aiResponse = await getAiResponse(userMessageContent, user.gender);
+      await addDoc(messagesCollection, {
+        role: 'model',
+        content: aiResponse,
+        createdAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error("Failed to get AI response:", error);
+      toast({ title: 'An error occurred', description: 'Failed to get response from AI.', variant: 'destructive' });
+      await addDoc(messagesCollection, {
+        role: 'model',
+        content: 'Sorry, I had an issue. Please try again.',
+        createdAt: serverTimestamp(),
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    if (initialPrompt && !initialPromptSent.current) {
-      initialPromptSent.current = true;
-      handleSendMessage(initialPrompt);
+    if (initialPrompt && user && firestore && !initialPromptHandled.current) {
+        const handleInitialPrompt = async () => {
+            initialPromptHandled.current = true;
+            
+            const chatDocRef = doc(firestore, 'users', user.uid, 'chats', chatId);
+            const chatDoc = await getDoc(chatDocRef);
+
+            if (!chatDoc.exists()) {
+                await setDoc(chatDocRef, {
+                    title: initialPrompt.substring(0, 40) + (initialPrompt.length > 40 ? '...' : ''),
+                    createdAt: serverTimestamp(),
+                    userId: user.uid,
+                });
+            }
+            await handleSendMessage(initialPrompt);
+        };
+        handleInitialPrompt();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialPrompt]);
+  }, [initialPrompt, user, firestore, chatId]);
   
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
 
-  const handleSendMessage = async (messageText: string) => {
-    if (!messageText.trim() || !user?.gender) return;
-
-    const userMessage: Message = { id: crypto.randomUUID(), role: 'user', content: messageText };
-    setMessages(prev => [...prev, userMessage]);
-    setIsLoading(true);
-    setInput('');
+  const handleRegenerate = async () => {
+    if (!user?.gender || !messages || messages.length === 0) return;
     
-    const aiMessagePlaceholder: Message = { id: crypto.randomUUID(), role: 'model', content: '' };
-    setMessages(prev => [...prev, aiMessagePlaceholder]);
+    const lastModelMessageIndex = messages.map(m => m.role).lastIndexOf('model');
+    if (lastModelMessageIndex === -1) return;
 
-    try {
-        const aiResponse = await getAiResponse(messageText, user.gender);
-        const aiMessageId = aiMessagePlaceholder.id;
-        
-        let index = 0;
-        function type() {
-            if (index < aiResponse.length) {
-                setMessages(prev =>
-                    prev.map(msg =>
-                        msg.id === aiMessageId
-                            ? { ...msg, content: aiResponse.substring(0, index + 1) }
-                            : msg
-                    )
-                );
-                index++;
-                setTimeout(type, 20);
-            } else {
-                setIsLoading(false);
-            }
-        }
-        type();
-
-    } catch (error) {
-        console.error("Failed to get AI response:", error);
-        toast({ title: 'An error occurred', description: 'Failed to get response from AI.', variant: 'destructive' });
-        setMessages(prev => prev.filter(msg => msg.id !== aiMessagePlaceholder.id));
-        setIsLoading(false);
-    }
-  };
-  
-  const handleRegenerate = async (messageId: string) => {
-    if (!user?.gender) return;
+    const lastModelMessage = messages[lastModelMessageIndex];
+    const history = messages.slice(0, lastModelMessageIndex);
     
-    const messageIndex = messages.findIndex(msg => msg.id === messageId);
-    if (messageIndex === -1 || messages[messageIndex].role !== 'model') return;
-
-    const history = messages.slice(0, messageIndex);
-    
-    setMessages(prev => prev.map(msg => msg.id === messageId ? { ...msg, content: '' } : msg));
     setIsLoading(true);
 
     try {
       const newResponse = await regenerateAiResponse(history, user.gender);
-      
-      let index = 0;
-      function type() {
-        if (index < newResponse.length) {
-            setMessages(prev =>
-                prev.map(msg =>
-                    msg.id === messageId
-                        ? { ...msg, content: newResponse.substring(0, index + 1) }
-                        : msg
-                )
-            );
-            index++;
-            setTimeout(type, 20);
-        } else {
-            setIsLoading(false);
-        }
-      }
-      type();
+      const messageDocRef = doc(firestore, 'users', user.uid, 'chats', chatId, 'messages', lastModelMessage.id);
+      await updateDoc(messageDocRef, { content: newResponse });
+
     } catch (error) {
       console.error("Failed to regenerate response:", error);
       toast({ title: 'An error occurred', description: 'Failed to regenerate response.', variant: 'destructive' });
-      setMessages(prev => prev.map(msg => msg.id === messageId ? {...msg, content: "Sorry, I couldn't think of a different response."} : msg))
-      setIsLoading(false);
+    } finally {
+       setIsLoading(false);
     }
   };
 
@@ -140,6 +157,8 @@ export default function ChatPage() {
     navigator.clipboard.writeText(content);
     toast({ title: 'Copied to clipboard!' });
   };
+  
+  const lastMessageIsModel = messages && messages.length > 0 && messages[messages.length - 1].role === 'model';
   
   return (
     <div className="flex flex-col h-full">
@@ -162,7 +181,12 @@ export default function ChatPage() {
 
       <ScrollArea className="flex-grow p-4" ref={scrollAreaRef}>
         <div className="space-y-6 max-w-4xl mx-auto">
-          {messages.map((message) => (
+          {(isLoadingMessages && !messages) && (
+              <div className="flex justify-center items-center h-full">
+                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
+              </div>
+          )}
+          {messages && messages.map((message) => (
             <div key={message.id} className={cn('flex items-end gap-3', message.role === 'user' ? 'justify-end' : 'justify-start')}>
               {message.role === 'model' && (
                 <Avatar className="h-8 w-8">
@@ -171,31 +195,40 @@ export default function ChatPage() {
                 </Avatar>
               )}
               <div className={cn('max-w-[75%] rounded-lg p-3 text-white', message.role === 'user' ? 'bg-primary' : 'bg-secondary')}>
-                {message.role === 'model' && message.content === '' && isLoading ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-48" />
-                    <Skeleton className="h-4 w-32" />
-                  </div>
-                ) : (
-                  <p className="whitespace-pre-wrap">{message.content}</p>
-                )}
-                
-                {message.role === 'model' && message.content !== '' && !isLoading && (
-                  <div className="flex gap-2 mt-2 border-t border-white/10 pt-2">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopy(message.content)}>
+                <p className="whitespace-pre-wrap">{message.content}</p>
+              </div>
+            </div>
+          ))}
+          {isLoading && (
+              <div className={cn('flex items-end gap-3 justify-start')}>
+                <Avatar className="h-8 w-8">
+                  {personaAvatar && <AvatarImage src={personaAvatar.imageUrl} alt={persona.name} />}
+                  <AvatarFallback><Bot/></AvatarFallback>
+                </Avatar>
+                <div className={cn('max-w-[75%] rounded-lg p-3 text-white bg-secondary')}>
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-48 bg-background/50" />
+                        <Skeleton className="h-4 w-32 bg-background/50" />
+                    </div>
+                </div>
+              </div>
+          )}
+
+          {lastMessageIsModel && !isLoading && (
+              <div className="flex justify-start ml-12">
+                  <div className="flex gap-2 mt-2 border rounded-full border-white/10 p-1">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopy(messages[messages.length-1].content)}>
                       <Copy className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleRegenerate(message.id)}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleRegenerate}>
                       <RefreshCw className="h-4 w-4" />
                     </Button>
                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toast({ title: 'Share feature coming soon!' })}>
                       <Share2 className="h-4 w-4" />
                     </Button>
                   </div>
-                )}
               </div>
-            </div>
-          ))}
+            )}
         </div>
       </ScrollArea>
 

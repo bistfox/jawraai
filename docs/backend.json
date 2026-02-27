@@ -24,6 +24,49 @@
         }
       },
       "required": ["username", "age", "gender"]
+    },
+    "ChatSession": {
+      "title": "Chat Session",
+      "description": "Metadata for a single chat session between a user and the AI.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The title of the chat session, often derived from the first message."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the chat was created."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who owns this chat."
+        }
+      },
+      "required": ["title", "createdAt", "userId"]
+    },
+    "ChatMessage": {
+      "title": "Chat Message",
+      "description": "A single message within a chat session.",
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": ["user", "model"],
+          "description": "The author of the message."
+        },
+        "content": {
+          "type": "string",
+          "description": "The text content of the message."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the message was sent."
+        }
+      },
+      "required": ["role", "content", "createdAt"]
     }
   },
   "auth": {
@@ -33,6 +76,14 @@
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/UserProfile" },
       "description": "User profile documents."
+    },
+    "/users/{userId}/chats/{chatId}": {
+      "schema": { "$ref": "#/entities/ChatSession" },
+      "description": "Stores metadata for a user's chat sessions."
+    },
+    "/users/{userId}/chats/{chatId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessage" },
+      "description": "Stores all messages for a specific chat session."
     }
   }
 }

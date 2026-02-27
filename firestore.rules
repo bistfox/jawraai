@@ -8,6 +8,11 @@ service cloud.firestore {
       // Allow user to update their own profile
       allow update, delete: if request.auth.uid == userId;
     }
+
+    match /users/{userId}/chats/{chatId=**} {
+      allow read, write: if request.auth.uid == userId;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
