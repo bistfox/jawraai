@@ -85,7 +85,7 @@ export async function createPaymentCharge(plan: { amount: number; description: s
     const response = await fetch('https://pay.felixta.xyz/api/create-charge', {
       method: 'POST',
       headers: {
-        'X-Api-Key': apiKey,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
