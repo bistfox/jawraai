@@ -67,7 +67,7 @@ export default function DashboardPage() {
             <CarouselContent className="-ml-4">
               {isLoading ? (
                 Array.from({ length: 4 }).map((_, index) => (
-                  <CarouselItem key={index} className="pl-4 basis-full sm:basis-1/2 lg:basis-1/3 xl:basis-1/4">
+                  <CarouselItem key={index} className="pl-4 md:basis-1/2 lg:basis-1/3 xl:basis-1/4">
                     <div className="p-1">
                       <Skeleton className="h-80 w-full rounded-lg" />
                     </div>
@@ -77,7 +77,7 @@ export default function DashboardPage() {
                 starters.map((starter, index) => {
                   const img = carouselImages[index % carouselImages.length];
                   return(
-                  <CarouselItem key={index} className="pl-4 basis-full sm:basis-1/2 lg:basis-1/3 xl:basis-1/4">
+                  <CarouselItem key={index} className="pl-4 basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4">
                     <div className="p-1 h-full">
                       <Card className="h-80 group overflow-hidden rounded-lg shadow-lg hover:shadow-primary/20 transition-all duration-300 relative text-white">
                         {img && 
