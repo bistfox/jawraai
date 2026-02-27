@@ -64,13 +64,16 @@ export async function createPaymentCharge(plan: { amount: number; description: s
     throw new Error('Payment gateway API key not configured.');
   }
 
+  // NOTE: In a real production app, this should come from environment variables.
+  const host = 'https://6000-firebase-studio-1772184010582.cluster-44kx2eiocbhe2tyk3zoyo3ryuo.cloudworkstations.dev';
+
   const payload = {
     amount: plan.amount,
     currency: 'BDT',
     description: plan.description,
     user_id: user.uid,
-    success_url: `http://localhost:9002/settings`,
-    cancel_url: `http://localhost:9002/upgrade`,
+    success_url: `${host}/settings`,
+    cancel_url: `${host}/upgrade`,
     metadata: { 
       plan: plan.description, 
       user_display: user.username,
@@ -82,16 +85,24 @@ export async function createPaymentCharge(plan: { amount: number; description: s
     const response = await fetch('https://pay.felixta.xyz/api/create-charge', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'X-Api-Key': apiKey,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
-        const errorBody = await response.json();
-        console.error('Felixta Pay API Error:', errorBody);
-        throw new Error(`Payment API request failed: ${response.statusText}`);
+        let errorData: any = { message: `Payment API request failed with status: ${response.status} ${response.statusText}` };
+        try {
+            const responseText = await response.text();
+            try {
+                errorData = JSON.parse(responseText);
+            } catch (e) {
+                errorData.message = responseText;
+            }
+        } catch (e) {}
+        console.error('Felixta Pay API Error:', errorData);
+        throw new Error(errorData.message || errorData.error || 'An unknown error occurred with the payment provider.');
     }
 
     const data = await response.json();
@@ -99,11 +110,11 @@ export async function createPaymentCharge(plan: { amount: number; description: s
     if (data.status === 'success' && data.payment_url) {
       return data.payment_url;
     } else {
-      console.error('Invalid response from Felixta Pay:', data);
-      throw new Error('Failed to create payment charge.');
+      console.error('Invalid success response from Felixta Pay:', data);
+      throw new Error('Failed to create payment charge. Invalid response from gateway.');
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating payment charge:', error);
-    throw new Error('Could not connect to payment gateway.');
+    throw new Error(error.message || 'Could not connect to the payment gateway.');
   }
 }
