@@ -96,7 +96,7 @@ export default function ChatPage() {
   
   return (
     <div className="flex flex-col h-full">
-      <header className="flex items-center gap-4 p-4 border-b">
+      <header className="sticky top-0 z-10 flex items-center gap-4 p-4 border-b bg-background">
         <Avatar>
           {personaAvatar && <AvatarImage src={personaAvatar.imageUrl} alt={persona.name} data-ai-hint={personaAvatar.imageHint} />}
           <AvatarFallback><Bot/></AvatarFallback>
@@ -166,10 +166,12 @@ export default function ChatPage() {
         </div>
       </ScrollArea>
 
-      <footer className="p-4 border-t">
+      <footer className="sticky bottom-0 z-10 p-4 border-t bg-background">
         <div className="max-w-4xl mx-auto">
           <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(input); }}>
-            <div className="relative">
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="ghost" size="icon" disabled={isLoading}><Mic/></Button>
+              <Button type="button" variant="ghost" size="icon" disabled={isLoading}><Paperclip/></Button>
               <Textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -180,14 +182,11 @@ export default function ChatPage() {
                   }
                 }}
                 placeholder="তোমার নোংরা ইচ্ছাগুলো বলো..."
-                className="pr-28 pl-12 min-h-[52px] pt-[14px]"
+                className="flex-1 resize-none"
+                rows={1}
                 disabled={isLoading}
               />
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 flex gap-1">
-                <Button type="button" variant="ghost" size="icon" disabled={isLoading}><Mic/></Button>
-                <Button type="button" variant="ghost" size="icon" disabled={isLoading}><Paperclip/></Button>
-              </div>
-              <Button type="submit" size="icon" className="absolute right-3 top-1/2 -translate-y-1/2" disabled={isLoading || !input.trim()}>
+              <Button type="submit" size="icon" className="ml-2" disabled={isLoading || !input.trim()}>
                 <Send />
               </Button>
             </div>
