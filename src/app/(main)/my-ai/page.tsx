@@ -1,8 +1,6 @@
 'use client';
 
 import { useUser } from '@/lib/hooks/use-user';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -28,17 +26,9 @@ const availableProviders = [
 ];
 
 export default function MyAiPage() {
-  const router = useRouter();
   const { user, refetchUser } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-  
-  // Redirect if not a pro user or loading
-  useEffect(() => {
-    if (user && user.subscription !== 'pro') {
-      router.replace('/dashboard');
-    }
-  }, [user, router]);
 
   const form = useForm<z.infer<typeof customAiSchema>>({
     resolver: zodResolver(customAiSchema),
@@ -83,12 +73,8 @@ export default function MyAiPage() {
     }
   }
 
-  if (!user || user.subscription !== 'pro') {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="h-16 w-16 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
-      </div>
-    );
+  if (!user) {
+    return null;
   }
   
   const pageTitle = user.gender === 'Male' ? 'My Magi AI' : 'My Jawra AI';
@@ -97,7 +83,7 @@ export default function MyAiPage() {
     <div className="p-4 md:p-8 space-y-8">
       <header>
         <h1 className="font-headline text-4xl md:text-5xl">{pageTitle}</h1>
-        <p className="text-muted-foreground text-lg mt-2">Manage your Pro AI configurations.</p>
+        <p className="text-muted-foreground text-lg mt-2">Manage your AI configurations.</p>
       </header>
 
       <Card>
