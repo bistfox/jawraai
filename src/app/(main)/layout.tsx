@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { useUser } from '@/lib/hooks/use-user';
 import React, { useEffect } from 'react';
 import { getAuth, signOut } from 'firebase/auth';
+import { MobileBottomBar } from '@/components/ui/mobile-bottom-bar';
 
 
 const JawraLogo = () => (
@@ -129,8 +130,9 @@ export default function MainAppLayout({
           </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
-      <SidebarInset>
+      <SidebarInset className="pb-16 md:pb-0">
         {children}
+        <MobileBottomBar />
       </SidebarInset>
     </SidebarProvider>
   );

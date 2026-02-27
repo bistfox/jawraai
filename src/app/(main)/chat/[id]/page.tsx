@@ -366,7 +366,7 @@ export default function ChatPage() {
         </div>
       </ScrollArea>
 
-      <footer className="sticky bottom-0 z-10 p-4 border-t bg-background">
+      <footer className="sticky bottom-16 md:bottom-0 z-10 p-4 border-t bg-background">
         <div className="max-w-4xl mx-auto">
           <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(input); }}>
             <div className="flex items-center gap-2">
