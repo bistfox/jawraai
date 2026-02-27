@@ -1,28 +1,8 @@
 'use server';
 
 import { explicitAIChatInteraction } from '@/ai/flows/explicit-ai-chat-interaction-flow';
-import { generateDynamicConversationStarters } from '@/ai/flows/dynamic-conversation-starters';
 import { regenerateAIMessage } from '@/ai/flows/regenerate-ai-message-flow';
 import type { Message, User } from '@/types';
-
-export async function getConversationStarters(
-  gender: User['gender']
-): Promise<string[]> {
-  try {
-    const starters = await generateDynamicConversationStarters({ gender });
-    return starters;
-  } catch (error) {
-    console.error('Error generating conversation starters:', error);
-    return [
-      "আজ রাতে কী করতে চাও? 😈",
-      "তোমার সবচেয়ে নোংরা ফ্যান্টাসি কী?",
-      "আমাকে তোমার করে নাও... 🔥",
-      "চলো কিছু নতুন খেলা খেলি...",
-      "তোমার শরীর নিয়ে কথা বলি? 🍑",
-      "আমার জন্য কী করতে পারবে? 😉"
-    ];
-  }
-}
 
 export async function getAiResponse(message: string, gender: User['gender']) {
   try {

@@ -1,12 +1,10 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/use-user';
-import { getConversationStarters } from '@/lib/actions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Sparkles } from 'lucide-react';
 import Autoplay from "embla-carousel-autoplay";
@@ -16,23 +14,37 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 export default function DashboardPage() {
   const router = useRouter();
   const { user } = useUser();
-  const [starters, setStarters] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   
   const plugin = useRef(Autoplay({ delay: 5000, stopOnInteraction: true }));
   const carouselImages = PlaceHolderImages.filter(p => p.id.startsWith('carousel'));
 
-  useEffect(() => {
-    if (user?.gender) {
-      const fetchStarters = async () => {
-        setIsLoading(true);
-        const fetchedStarters = await getConversationStarters(user.gender);
-        setStarters(fetchedStarters);
-        setIsLoading(false);
-      };
-      fetchStarters();
-    }
-  }, [user?.gender]);
+  const maleUserStarters = [
+      "আমার সাথে রাতভর চোদাচুদির ফ্যান্টাসি...",
+      "তোর বন্ধুদের ডেকে আমাকে গ্রুপ চোদার পার্টি দিবি?",
+      "রাস্তায় সবার সামনে আমাকে চোদার সাহস আছে তোর?",
+      "আমাকে বেঁধে তোর সব নোংরা ইচ্ছা পূরণ করবি?",
+      "তোর অফিসের ডেস্কে আমাকে কুকুর বানিয়ে চোদ...",
+      "বিচে আমাকে নিয়ে আয়, ভিজে শরীরে চোদা খাব।",
+      "চলন্ত গাড়িতে আমাকে কোলে বসিয়ে চোদতে পারবি?",
+      "মিউজিয়ামের অন্ধকারে আমাকে চোদতে চাস?",
+      "লাইব্রেরির টেবিলে আমাকে চুদে দে, কেউ দেখার আগে।",
+      "জঙ্গলের মধ্যে আমাকে জানোয়ারের মতো চোদবি?",
+  ];
+
+  const femaleUserStarters = [
+      "তোর সাথে রাতভর চোদাচুদির ফ্যান্টাসি...",
+      "তোর আর তোর বোনের সাথে গ্রুপ চোদার কল্পনা করেছিস?",
+      "রাস্তার মধ্যে সবার সামনে তোকে চোদার ইচ্ছাটা কেমন?",
+      "তোকে বেঁধে চাবুক মেরে BDSM চোদা খাওয়ার ইচ্ছা আছে?",
+      "অফিসের ডেস্কে তোকে ফেলে চুদলে কেমন লাগবে?",
+      "সমুদ্রের পাড়ে, ভেজা বালিতে চোদা খেতে চাস?",
+      "চলন্ত গাড়ির ভেতর হার্ডকোর চোদা খাওয়ার জন্য রেডি?",
+      "মিউজিয়ামের অন্ধকারে লুকিয়ে চোদা খাওয়ার অভিজ্ঞতা নিবি?",
+      "লাইব্রেরির নীরবতায় তোর মুখ চাপা দিয়ে চুদলে কেমন লাগবে?",
+      "জঙ্গলের মধ্যে তোকে জানোয়ারের মতো চুদতে চাই।",
+  ];
+
+  const starters = user?.gender === 'Male' ? maleUserStarters : femaleUserStarters;
 
   const handleStartChat = (prompt: string) => {
     const newChatId = crypto.randomUUID();
@@ -65,41 +77,31 @@ export default function DashboardPage() {
             opts={{ loop: true, align: 'start' }}
           >
             <CarouselContent className="-ml-4">
-              {isLoading ? (
-                Array.from({ length: 4 }).map((_, index) => (
-                  <CarouselItem key={index} className="pl-4 md:basis-1/2 lg:basis-1/3 xl:basis-1/4">
-                    <div className="p-1">
-                      <Skeleton className="h-80 w-full rounded-lg" />
-                    </div>
-                  </CarouselItem>
-                ))
-              ) : (
-                starters.map((starter, index) => {
-                  const img = carouselImages[index % carouselImages.length];
-                  return(
-                  <CarouselItem key={index} className="pl-4 basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4">
-                    <div className="p-1 h-full">
-                      <Card className="h-80 group overflow-hidden rounded-lg shadow-lg hover:shadow-primary/20 transition-all duration-300 relative text-white">
-                        {img && 
-                          <>
-                            <Image src={img.imageUrl} alt={starter} fill className="object-cover transition-transform duration-500 group-hover:scale-105" data-ai-hint={img.imageHint}/>
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-                          </>
-                        }
-                        <CardContent className="absolute bottom-0 p-4 w-full z-10">
-                          <p className="font-bold text-xl mb-3 line-clamp-3">{starter}</p>
-                          <Button 
-                            onClick={() => handleStartChat(starter)} 
-                            className="w-full bg-accent/90 hover:bg-accent text-accent-foreground font-bold"
-                          >
-                              Start Chat <Sparkles className="ml-2 h-4 w-4"/>
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </CarouselItem>
-                )})
-              )}
+              {starters.map((starter, index) => {
+                const img = carouselImages[index % carouselImages.length];
+                return(
+                <CarouselItem key={index} className="pl-4 basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4">
+                  <div className="p-1 h-full">
+                    <Card className="h-80 group overflow-hidden rounded-lg shadow-lg hover:shadow-primary/20 transition-all duration-300 relative text-white">
+                      {img && 
+                        <>
+                          <Image src={img.imageUrl} alt={starter} fill className="object-cover transition-transform duration-500 group-hover:scale-105" data-ai-hint={img.imageHint}/>
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                        </>
+                      }
+                      <CardContent className="absolute bottom-0 p-4 w-full z-10">
+                        <p className="font-bold text-xl mb-3 line-clamp-3">{starter}</p>
+                        <Button 
+                          onClick={() => handleStartChat(starter)} 
+                          className="w-full bg-accent/90 hover:bg-accent text-accent-foreground font-bold"
+                        >
+                            Start Chat <Sparkles className="ml-2 h-4 w-4"/>
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </CarouselItem>
+              )})}
             </CarouselContent>
             <CarouselPrevious className="hidden lg:flex" />
             <CarouselNext className="hidden lg:flex" />
