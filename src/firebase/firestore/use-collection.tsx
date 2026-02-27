@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { Query, DocumentData, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { onSnapshot, type Query, type DocumentData, type Unsubscribe } from 'firebase/firestore';
 
 export function useCollection<T>(query: Query<DocumentData> | null) {
   const [data, setData] = useState<T[] | null>(null);
@@ -16,9 +16,6 @@ export function useCollection<T>(query: Query<DocumentData> | null) {
     }
     
     setIsLoading(true);
-    
-    // onSnapshot is imported here to avoid being bundled on the server.
-    const onSnapshot = require('firebase/firestore').onSnapshot;
 
     const unsubscribe: Unsubscribe = onSnapshot(query, 
       (snapshot) => {
