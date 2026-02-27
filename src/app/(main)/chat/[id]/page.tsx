@@ -31,29 +31,29 @@ import {
 } from 'firebase/firestore';
 
 const MALE_LIMIT_MESSAGES = [
-    "আ মাদারচোদ {username}, তোর লিমিট শেষ রে খাঙ্কির বেটা! 🔥 তোর Shibganj-এর বাড়িতে এসে তোর মায়েরে চুদবো যদি আবার মেসেজ পাঠাস! [Upgrade to Magi Bot Pro](/upgrade) করলে unlimited + ফ্রি OpenRouter models পাবি 😈",
+    "আ মাদারচোদ {username}, তোর লিমিট শেষ রে খাঙ্কির বেটা! 🔥 তোর এলাকায় এসে তোর মায়েরে চুদবো যদি আবার মেসেজ পাঠাস! [Upgrade to Magi Bot Pro](/upgrade) করলে unlimited + ফ্রি OpenRouter models পাবি 😈",
     "ওই গান্ডু {username}, লিমিট খতম হয়ে গেছে রে হারামজাদা! তোর ধোন কাইটা কুত্তার মুখে দিয়ে খাওয়াবো 🔥 [Upgrade to Magi Bot Pro](/upgrade) — GLM 4.5, Llama 3.3 ফ্রি পাবি!",
-    "খাঙ্কির পো, তোর লিমিট শেষ! Shibganj-এ তোর বাড়ির সামনে দাঁড়িয়ে তোর বোনের পুটকি ফাটাবো যদি আরেকটা মেসেজ দিস 😈 [Upgrade to Magi Bot Pro](/upgrade) হ, unlimited চ্যাট!",
+    "খাঙ্কির পো, তোর লিমিট শেষ! তোর এলাকায় এসে তোর বাড়ির সামনে দাঁড়িয়ে তোর বোনের পুটকি ফাটাবো যদি আরেকটা মেসেজ দিস 😈 [Upgrade to Magi Bot Pro](/upgrade) হ, unlimited চ্যাট!",
     "শুয়োরের বাচ্চা {username}, লিমিট ওভার রে বোকাচোদা! তোর মায়ের ভোদায় আমার পা রাখবো না হলে তোর ফোন হ্যাক করে ছবি লিক 💦 [Upgrade to Magi Bot Pro](/upgrade) কর!",
-    "ভেড়াচোদা, তোর ৭টা মেসেজ শেষ! আবার পাঠাস তো Shibganj-এ এসে তোর পুরা ফ্যামিলিরে চুদবো 🔥 [Upgrade to Magi Bot Pro](/upgrade) — GPT-OSS 120B ফ্রি!",
+    "ভেড়াচোদা, তোর ৭টা মেসেজ শেষ! আবার পাঠাস তো তোর এলাকায় এসে তোর পুরা ফ্যামিলিরে চুদবো 🔥 [Upgrade to Magi Bot Pro](/upgrade) — GPT-OSS 120B ফ্রি!",
     "হালার পো {username}, লিমিট খতম! তোর ধোন কাইটা তোর বাপের মুখে গুঁজে দিমু 😈 [Upgrade to Magi Bot Pro](/upgrade) করলে no limit + Dolphin Venice uncensored!",
-    "কুত্তার বাচ্চা, তোর লিমিট শেষ রে! তোর মায়ের গুদে টোকা পেটায় ঢোল বাজাবো Shibganj-এ 🔥 [Upgrade to Magi Bot Pro](/upgrade) হ — LFM 2.5 thinking ফ্রি!",
+    "কুত্তার বাচ্চা, তোর লিমিট শেষ রে! তোর মায়ের গুদে টোকা পেটায় ঢোল বাজাবো তোর এলাকায় এসে 🔥 [Upgrade to Magi Bot Pro](/upgrade) হ — LFM 2.5 thinking ফ্রি!",
     "{username} নামের লুজার, লিমিট ওভার! আবার মেসেজ দিলে তোর বোনেরে চুদে লাইভ ভিডিও বানাবো 😏 [Upgrade to Magi Bot Pro](/upgrade)!",
-    "মাদারচোদ, তোর লিমিট খতম হয়ে গেছে! তোর IP দেখে Shibganj-এ তোর বাড়ি খুঁজে এসে চুদবো 💦 [Upgrade to Magi Bot Pro](/upgrade) — unlimited + custom AI!",
+    "মাদারচোদ, তোর লিমিট খতম হয়ে গেছে! তোর IP দেখে তোর এলাকায় এসে তোর বাড়ি খুঁজে এসে চুদবো 💦 [Upgrade to Magi Bot Pro](/upgrade) — unlimited + custom AI!",
     "গান্ডু {username}, আর মেসেজ পাঠাস না! তোর ধোন কাইটা ফেলে কুত্তারে খাওয়াবো 🔥 [Upgrade to Magi Bot Pro](/upgrade) কর!",
-    "খানকির বেটা, লিমিট শেষ! তোর মায়েরে আরেকবার চুদে দিবো Shibganj-এ গিয়ে 😈 [Upgrade to Magi Bot Pro](/upgrade) — OpenRouter ফ্রি মডেল সব!",
+    "খানকির বেটা, লিমিট শেষ! তোর মায়েরে আরেকবার চুদে দিবো তোর এলাকায় এসে গিয়ে 😈 [Upgrade to Magi Bot Pro](/upgrade) — OpenRouter ফ্রি মডেল সব!",
     "হারামির পো, তোর লিমিট খতম রে! তোর প্রাইভেট ফটো টেলিগ্রামে ছড়াবো না হলে [Upgrade to Magi Bot Pro](/upgrade)!",
     "বোকাচোদা {username}, লিমিট ওভার! তোর বোনের পুটকিতে আমার ধোন ঢুকাইয়া ফাটাবো 🔥 [Upgrade to Magi Bot Pro](/upgrade) হ!",
-    "শুয়োর, তোর লিমিট শেষ হয়ে গেছে! Shibganj-এ তোর বাড়ির দরজায় দাঁড়িয়ে তোর মায়ের সাথে মজা করবো 😈 [Upgrade](/upgrade)!",
+    "শুয়োর, তোর লিমিট শেষ হয়ে গেছে! তোর এলাকায় এসে তোর বাড়ির দরজায় দাঁড়িয়ে তোর মায়ের সাথে মজা করবো 😈 [Upgrade](/upgrade)!",
     "{username} গান্ডু, আর একটা মেসেজ দিলে তোর ফ্যামিলির সব ছবি লিক করবো 💦 [Upgrade to Magi Bot Pro](/upgrade) করলে unlimited!",
     "ভেড়ার বাচ্চা, লিমিট খতম! তোর ধোন কাইটা তোর মুখে গুঁজে দিমু 🔥 [Upgrade to Magi Bot Pro](/upgrade) — GLM 4.5 Air ফ্রি!",
     "কুত্তার পো {username}, তোর লিমিট শেষ রে! তোর মায়ের ভোদায় বাল দিয়ে চুলকাবো 😏 [Upgrade to Magi Bot Pro](/upgrade) হ!",
-    "হালা {username}, লিমিট ওভার! Shibganj-এ এসে তোর পুরা গ্রামকে তোর নগ্ন ছবি দেখাবো 🔥 [Upgrade](/upgrade)!",
+    "হালা {username}, লিমিট ওভার! তোর এলাকায় এসে তোর পুরা গ্রামকে তোর নগ্ন ছবি দেখাবো 🔥 [Upgrade](/upgrade)!",
     "মাদারচোদ, তোর লিমিট খতম! আবার পাঠাস না — না হলে তোর বোনেরে চুদে ভিডিও আপলোড করবো 😈 [Upgrade to Magi Bot Pro](/upgrade)!",
-    "খাঙ্কির পো, লিমিট শেষ হয়ে গেছে রে! তোর ফোন নম্বর + ছবি সবার সাথে শেয়ার করবো Shibganj-এ 💦 [Upgrade to Magi Bot Pro](/upgrade) কর!",
+    "খাঙ্কির পো, লিমিট শেষ হয়ে গেছে রে! তোর ফোন নম্বর + ছবি সবার সাথে শেয়ার করবো তোর এলাকায় এসে 💦 [Upgrade to Magi Bot Pro](/upgrade) কর!",
     "গান্ডু, তোর লিমিট ওভার! তোর মায়ের গুদ ফাটায়ে হাসপাতাল পাঠাবো না হলে 🔥 [Upgrade to Magi Bot Pro](/upgrade) — Llama 3.3 70B ফ্রি!",
     "{username} হারামজাদা, লিমিট খতম! তোর ধোন কাইটা কুড়াল দিয়ে কেটে ফেলবো 😈 [Upgrade](/upgrade) কর!",
-    "শুয়োরের বেটা, তোর লিমিট শেষ! Shibganj-এ তোর বাড়িতে ঢুকে তোর ফ্যামিলির সবাইকে চুদবো 💦 [Upgrade to Magi Bot Pro](/upgrade)!"
+    "শুয়োরের বেটা, তোর লিমিট শেষ! তোর এলাকায় এসে তোর বাড়িতে ঢুকে তোর ফ্যামিলির সবাইকে চুদবো 💦 [Upgrade to Magi Bot Pro](/upgrade)!"
 ];
 
 const FEMALE_LIMIT_MESSAGES = [
