@@ -1,5 +1,11 @@
 import type { Timestamp } from 'firebase/firestore';
 
+export interface CustomAI {
+  provider: string;
+  apiKey: string;
+  nickname: string;
+}
+
 export interface User {
   uid: string;
   email?: string | null;
@@ -8,6 +14,8 @@ export interface User {
   gender?: 'Male' | 'Female';
   messageCount?: number;
   lastMessageDate?: string;
+  subscription?: 'free' | 'pro';
+  customAIs?: CustomAI[];
 }
 
 export interface Message {

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { Home, MessageSquare, PlusSquare, Settings, User as UserIcon, LogOut, Bot } from 'lucide-react';
+import { Home, MessageSquare, PlusSquare, Settings, User as UserIcon, LogOut, Bot, Sparkles } from 'lucide-react';
 import {
   SidebarProvider,
   Sidebar,
@@ -95,6 +95,13 @@ export default function MainAppLayout({
                 <Link href="/chat/history"><MessageSquare /><span>Chat History</span></Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
+            {user.subscription === 'pro' && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={pathname === '/my-ai'} tooltip={{children: 'My AI'}}>
+                    <Link href="/my-ai"><Sparkles /><span>My AI</span></Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+            )}
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>

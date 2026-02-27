@@ -65,7 +65,9 @@ export default function OnboardingPage() {
         const userProfile = {
             ...values,
             gender,
-            email: user.email // carry over email from auth
+            email: user.email, // carry over email from auth
+            subscription: 'free',
+            customAIs: [],
         };
         await setDoc(doc(firestore, 'users', user.uid), userProfile);
         

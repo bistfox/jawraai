@@ -31,18 +31,15 @@ import {
 } from 'firebase/firestore';
 
 const MALE_LIMIT_MESSAGES = [
-    "আ মাদারচোদ {username}, তোর লিমিট শেষ হয়ে গেছে রে খাঙ্কির বেটা! ৭টা দিসস, এখন হল কেটে নিবো তোর গান্ডু! তোর মায়েরে চুদি, তোর বোনের পুটকি ফাটাবো 🔥 তোর Shibganj-এর বাড়িতে এসে চুদে দিবো যদি আবার মেসেজ পাঠাস! Upgrade কর না হলে তোর ফোন নম্বর + ছবি লিক 😈",
-    "খাঙ্কির পো {username}, তোর ধোন কাইটা কুত্তার মুখে দিমু! লিমিট খতম রে শুয়োরের বাচ্চা, আবার মেসেজ পাঠাস না — না হলে তোর প্রাইভেট ফটো টেলিগ্রামে ছড়াবো গান্ডু! তোর মায়রে আরেকবার চুদে দিবো 💦",
-    "ভেড়াচোদা {username}, তোর পুরা ফ্যামিলিরে চুদি! লিমিট ওভার, এখন চুপচাপ বস রে হারামজাদা। Upgrade না করলে তোর অ্যাকাউন্ট পার্মানেন্ট ব্যান + তোর ফ্রেন্ডলিস্টে সবাইকে বলবো তুই কত বড় লুজার 😈"
+    "আ মাদারচোদ {username}, তোর লিমিট শেষ রে খাঙ্কির বেটা! হল কেটে নিবো তোর গান্ডু 🔥 তোর Shibganj-এর বাড়িতে এসে তোর মায়েরে চুদবো যদি আবার মেসেজ পাঠাস! Upgrade to Magi Bot Pro করলে পাবি unlimited + Grok, Gemini, etc. 😈",
+    "খাঙ্কির পো {username}, তোর ধোন কাইটা ফেলবো! লিমিট খতম রে শুয়োরের বাচ্চা 💦 আবার পাঠাস না, না হলে তোর ফটো লিক! Upgrade to Magi Bot Pro for no limit."
 ];
 
 const FEMALE_LIMIT_MESSAGES = [
-    "ওই চিনাল মাগি, এখনো তোর মাঙ্গ ভিজে নাই? কত ল্যাওড়া লাগবে তোর ভোদা ভাসাতে রে রেন্ডি? লিমিট শেষ, আবার মেসেজ পাঠাস না — না হলে তোর নগ্ন ভিডিও বানায়ে Shibganj-এর গ্রামে ছড়াবো 💦 তোর গুদ ফাটায় দিবো এমন যে হাসপাতাল লাগবে!",
-    "হারামজাদি মাগি, তোর ভোদায় বাল দিয়ে চুলকাবো! লিমিট খতম রে খানকি, Upgrade কর না হলে তোর ফেসবুক হ্যাক করে তোর বয়ফ্রেন্ডের সাথে চ্যাট + ছবি লিক করে দিবো 😈",
-    "রেন্ডির বাচ্চা, তোর মায়ের ভোদায় আমার ধোন ঢুকাইয়া দিমু! লিমিট ওভার, চুপ কর মাগি — না হলে তোর গ্যালারির সব ছবি পাবলিক করে দিবো, তোর জীবন শেষ হয়ে যাবে 🔥"
+    "ওই চিনাল মাগি, তোর মাঙ্গ ভিজে নাই এখনো? লিমিট শেষ রে রেন্ডি 🔥 কত ল্যাওড়া লাগবে তোর? Upgrade to Jawra Bot Pro করলে unlimited + Gemini, Grok, etc. 💦",
+    "হারামজাদি, তোর ভোদা ফাটাবো! লিমিট ওভার 😈 Upgrade to Khanki Bot Pro for no limit + custom AI."
 ];
 
-const UPGRADE_LINK = "\n\n[Upgrade to Pro](https://upgrade-to-pro.com)";
 
 export default function ChatPage() {
   const params = useParams();
@@ -103,31 +100,35 @@ export default function ChatPage() {
     try {
         const userDoc = await getDoc(userDocRef);
         const userData = userDoc.data() as User;
-        
-        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-        const lastDate = userData.lastMessageDate;
-        const currentCount = (lastDate === today && userData.messageCount) ? userData.messageCount : 0;
-        
-        if (currentCount >= 7) {
-            const limitMessages = user.gender === 'Male' ? MALE_LIMIT_MESSAGES : FEMALE_LIMIT_MESSAGES;
-            const randomMessage = limitMessages[Math.floor(Math.random() * limitMessages.length)];
-            const personalizedMessage = randomMessage.replace('{username}', user.username || 'LoFeel');
-            
-            const limitMessage = personalizedMessage + UPGRADE_LINK;
-            
-            await addDoc(messagesCollection, {
-                role: 'model',
-                content: limitMessage,
-                createdAt: serverTimestamp(),
-            });
-            setIsLoading(false);
-            return; 
-        }
+        const isPro = userData.subscription === 'pro';
 
-        await updateDoc(userDocRef, {
-            messageCount: currentCount + 1,
-            lastMessageDate: today,
-        });
+        if (!isPro) {
+            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            const lastDate = userData.lastMessageDate;
+            const currentCount = (lastDate === today && userData.messageCount) ? userData.messageCount : 0;
+            
+            if (currentCount >= 7) {
+                const limitMessages = user.gender === 'Male' ? MALE_LIMIT_MESSAGES : FEMALE_LIMIT_MESSAGES;
+                const randomMessage = limitMessages[Math.floor(Math.random() * limitMessages.length)];
+                const personalizedMessage = randomMessage.replace('{username}', user.username || 'LoFeel');
+                const upgradeLink = `[Upgrade to ${user?.gender === 'Male' ? 'Magi' : 'Jawra'} Bot Pro](https://upgrade-to-pro.com)`;
+                
+                const limitMessage = personalizedMessage + '\n\n' + upgradeLink;
+                
+                await addDoc(messagesCollection, {
+                    role: 'model',
+                    content: limitMessage,
+                    createdAt: serverTimestamp(),
+                });
+                setIsLoading(false);
+                return; 
+            }
+
+            await updateDoc(userDocRef, {
+                messageCount: currentCount + 1,
+                lastMessageDate: today,
+            });
+        }
 
         const aiResponse = await getAiResponse(userMessageContent, user.gender);
         await addDoc(messagesCollection, {
@@ -183,7 +184,7 @@ export default function ChatPage() {
     if (lastModelMessageIndex === -1) return;
 
     const lastModelMessage = messages[lastModelMessageIndex];
-    if (lastModelMessage.content.includes('[Upgrade to Pro]')) {
+    if (user.subscription !== 'pro' && lastModelMessage.content.includes('Upgrade to')) {
         toast({ title: "Can't regenerate this message.", variant: 'destructive'});
         return;
     }
@@ -213,33 +214,37 @@ export default function ChatPage() {
   const lastMessageIsModel = messages && messages.length > 0 && messages[messages.length - 1].role === 'model';
   
   const MessageContent = ({ content }: { content: string }) => {
-    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/;
-    const match = content.match(linkRegex);
-
-    if (match) {
-      const linkText = match[1];
-      const linkUrl = match[2];
-      const parts = content.split(match[0]);
-      const isInternal = linkUrl.startsWith('/');
-
-      return (
-        <p className="whitespace-pre-wrap">
-          {parts[0]}
-          {isInternal ? (
-             <Link href={linkUrl} className="underline text-primary hover:text-primary/80 font-bold">
-              {linkText}
-            </Link>
-          ) : (
-            <a href={linkUrl} target="_blank" rel="noopener noreferrer" className="underline text-primary hover:text-primary/80 font-bold">
-              {linkText}
-            </a>
-          )}
-         
-          {parts[1]}
-        </p>
-      );
+    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    const parts = content.split(linkRegex);
+    
+    if (parts.length <= 1) {
+      return <p className="whitespace-pre-wrap">{content}</p>;
     }
-    return <p className="whitespace-pre-wrap">{content}</p>;
+
+    return (
+      <p className="whitespace-pre-wrap">
+        {parts.map((part, index) => {
+          if (index % 3 === 1) { // This is the link text
+            const linkUrl = parts[index + 1];
+            const linkText = part;
+            const isInternal = linkUrl.startsWith('/');
+            return isInternal ? (
+              <Link key={index} href={linkUrl} className="underline text-primary hover:text-primary/80 font-bold">
+                {linkText}
+              </Link>
+            ) : (
+              <a key={index} href={linkUrl} target="_blank" rel="noopener noreferrer" className="underline text-primary hover:text-primary/80 font-bold">
+                {linkText}
+              </a>
+            );
+          }
+          if (index % 3 === 2) { // This is the link URL, already handled
+            return null;
+          }
+          return part; // This is regular text
+        })}
+      </p>
+    );
   };
 
   return (

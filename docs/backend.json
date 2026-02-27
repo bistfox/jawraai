@@ -29,6 +29,24 @@
         "lastMessageDate": {
             "type": "string",
             "description": "The date of the last message sent by the user, in YYYY-MM-DD format."
+        },
+        "subscription": {
+          "type": "string",
+          "enum": ["free", "pro"],
+          "description": "The user's subscription status."
+        },
+        "customAIs": {
+          "type": "array",
+          "description": "User's custom AI model configurations.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "provider": { "type": "string", "description": "The AI provider (e.g., Grok, Gemini)." },
+              "apiKey": { "type": "string", "description": "The user's API key for the provider." },
+              "nickname": { "type": "string", "description": "A custom nickname for this configuration." }
+            },
+            "required": ["provider", "apiKey", "nickname"]
+          }
         }
       },
       "required": ["username", "age", "gender"]
