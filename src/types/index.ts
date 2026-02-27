@@ -6,6 +6,8 @@ export interface User {
   username?: string;
   age?: number;
   gender?: 'Male' | 'Female';
+  messageCount?: number;
+  lastMessageDate?: string;
 }
 
 export interface Message {

@@ -21,6 +21,14 @@
         "email": {
             "type": "string",
             "format": "email"
+        },
+        "messageCount": {
+            "type": "number",
+            "description": "The number of messages sent by the user today."
+        },
+        "lastMessageDate": {
+            "type": "string",
+            "description": "The date of the last message sent by the user, in YYYY-MM-DD format."
         }
       },
       "required": ["username", "age", "gender"]

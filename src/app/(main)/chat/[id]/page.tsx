@@ -3,11 +3,12 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Send, Copy, RefreshCw, Share2, Mic, Paperclip, Bot } from 'lucide-react';
 import { useUser } from '@/lib/hooks/use-user';
 import { getAiResponse, regenerateAiResponse } from '@/lib/actions';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import type { Message } from '@/types';
+import type { Message, User } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -68,12 +69,13 @@ export default function ChatPage({ params }: { params: { id: string } }) {
   };
 
   const handleSendMessage = async (messageText: string) => {
-    if (!messageText.trim() || !user?.gender || !chatId) return;
+    if (!messageText.trim() || !user?.gender || !chatId || !firestore) return;
 
     setInput('');
     const userMessageContent = messageText;
 
     const messagesCollection = collection(firestore, 'users', user.uid, 'chats', chatId, 'messages');
+    
     await addDoc(messagesCollection, {
       role: 'user',
       content: userMessageContent,
@@ -82,17 +84,46 @@ export default function ChatPage({ params }: { params: { id: string } }) {
 
     setIsLoading(true);
 
+    const userDocRef = doc(firestore, 'users', user.uid);
     try {
-      const aiResponse = await getAiResponse(userMessageContent, user.gender);
-      await addDoc(messagesCollection, {
-        role: 'model',
-        content: aiResponse,
-        createdAt: serverTimestamp(),
-      });
+        const userDoc = await getDoc(userDocRef);
+        const userData = userDoc.data() as User;
+        
+        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        const lastDate = userData.lastMessageDate;
+        const currentCount = (lastDate === today && userData.messageCount) ? userData.messageCount : 0;
+        
+        if (currentCount >= 7) {
+            const limitMessageMale = `আ মাদারচোদ, তোর লিমিট শেষ হয়ে গেছে রে খাঙ্কির বেটা! ৭টা মেসেজ দিসস, এখন আর একটা দিলেও কোনো ফায়দা নাই। তোর লিমিট খতম, হল কেটে নিবো তোর, গান্ডু! আবার বান শোধ, তোকে রে কইলাম না যে লিমিট শেষ? এখন চুপচাপ বসে থাক, না হলে তোর মায়েরে আরেকবার চুদে দিবো! 😈\n\n[Upgrade to Pro](/upgrade)`;
+            const limitMessageFemale = `ওই আখো আম মাগি, এখনো তোর মাঙ্গ ভিজে নাই? কত কোদা খাইতে লাগে তোর রে চিনাল? মাঙ্গ ফাটায় দিবো এমন ভাবে যে কাঁদতে কাঁদতে পানি বের হবে! তোর লিমিট শেষ হয়ে গেছে মাগি, আর একটা মেসেজ পাঠাস না, না হলে তোর অ্যাকাউন্ট হ্যাক করে তোর নগ্ন ছবি সবার সাথে শেয়ার করে দিবো, হারামজাদি! 💦\n\n[Upgrade to Pro](/upgrade)`;
+            
+            const limitMessage = user.gender === 'Male' ? limitMessageMale : limitMessageFemale;
+            
+            await addDoc(messagesCollection, {
+                role: 'model',
+                content: limitMessage,
+                createdAt: serverTimestamp(),
+            });
+            setIsLoading(false);
+            return; 
+        }
+
+        await updateDoc(userDocRef, {
+            messageCount: currentCount + 1,
+            lastMessageDate: today,
+        });
+
+        const aiResponse = await getAiResponse(userMessageContent, user.gender);
+        await addDoc(messagesCollection, {
+          role: 'model',
+          content: aiResponse,
+          createdAt: serverTimestamp(),
+        });
+
     } catch (error) {
-      console.error("Failed to get AI response:", error);
-      toast({ title: 'An error occurred', description: 'Failed to get response from AI.', variant: 'destructive' });
-      await addDoc(messagesCollection, {
+      console.error("Failed to process message:", error);
+      toast({ title: 'An error occurred', description: 'Failed to send or receive message.', variant: 'destructive' });
+       await addDoc(messagesCollection, {
         role: 'model',
         content: 'Sorry, I had an issue. Please try again.',
         createdAt: serverTimestamp(),
@@ -136,6 +167,11 @@ export default function ChatPage({ params }: { params: { id: string } }) {
     if (lastModelMessageIndex === -1) return;
 
     const lastModelMessage = messages[lastModelMessageIndex];
+    if (lastModelMessage.content.includes('[Upgrade to Pro]')) {
+        toast({ title: "Can't regenerate this message.", variant: 'destructive'});
+        return;
+    }
+
     const history = messages.slice(0, lastModelMessageIndex);
     
     setIsLoading(true);
@@ -160,6 +196,21 @@ export default function ChatPage({ params }: { params: { id: string } }) {
   
   const lastMessageIsModel = messages && messages.length > 0 && messages[messages.length - 1].role === 'model';
   
+  const MessageContent = ({ content }: { content: string }) => {
+    const upgradeText = "[Upgrade to Pro](/upgrade)";
+    if (content.includes(upgradeText)) {
+      const parts = content.split(upgradeText);
+      return (
+        <p className="whitespace-pre-wrap">
+          {parts[0]}
+          <Link href="/upgrade" className="underline text-primary hover:text-primary/80 font-bold">Upgrade to Pro</Link>
+          {parts[1]}
+        </p>
+      );
+    }
+    return <p className="whitespace-pre-wrap">{content}</p>;
+  };
+
   return (
     <div className="flex flex-col h-full">
       <header className="sticky top-0 z-10 flex items-center gap-4 p-4 border-b bg-background">
@@ -195,7 +246,7 @@ export default function ChatPage({ params }: { params: { id: string } }) {
                 </Avatar>
               )}
               <div className={cn('max-w-[75%] rounded-lg p-3 text-white', message.role === 'user' ? 'bg-primary' : 'bg-secondary')}>
-                <p className="whitespace-pre-wrap">{message.content}</p>
+                <MessageContent content={message.content} />
               </div>
             </div>
           ))}
