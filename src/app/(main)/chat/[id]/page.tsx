@@ -22,6 +22,7 @@ export default function ChatPage() {
   const initialPrompt = searchParams.get('prompt');
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const initialPromptSent = useRef(false);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -43,7 +44,8 @@ export default function ChatPage() {
   };
 
   useEffect(() => {
-    if (initialPrompt && messages.length === 0) {
+    if (initialPrompt && !initialPromptSent.current) {
+      initialPromptSent.current = true;
       handleSendMessage(initialPrompt);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -62,14 +64,37 @@ export default function ChatPage() {
     setIsLoading(true);
     setInput('');
     
-    // Placeholder for AI response
     const aiMessagePlaceholder: Message = { id: crypto.randomUUID(), role: 'model', content: '' };
     setMessages(prev => [...prev, aiMessagePlaceholder]);
 
-    const aiResponse = await getAiResponse(messageText, user.gender);
+    try {
+        const aiResponse = await getAiResponse(messageText, user.gender);
+        const aiMessageId = aiMessagePlaceholder.id;
+        
+        let index = 0;
+        function type() {
+            if (index < aiResponse.length) {
+                setMessages(prev =>
+                    prev.map(msg =>
+                        msg.id === aiMessageId
+                            ? { ...msg, content: aiResponse.substring(0, index + 1) }
+                            : msg
+                    )
+                );
+                index++;
+                setTimeout(type, 20);
+            } else {
+                setIsLoading(false);
+            }
+        }
+        type();
 
-    setMessages(prev => prev.map(msg => msg.id === aiMessagePlaceholder.id ? { ...msg, content: aiResponse } : msg));
-    setIsLoading(false);
+    } catch (error) {
+        console.error("Failed to get AI response:", error);
+        toast({ title: 'An error occurred', description: 'Failed to get response from AI.', variant: 'destructive' });
+        setMessages(prev => prev.filter(msg => msg.id !== aiMessagePlaceholder.id));
+        setIsLoading(false);
+    }
   };
   
   const handleRegenerate = async (messageId: string) => {
@@ -83,10 +108,32 @@ export default function ChatPage() {
     setMessages(prev => prev.map(msg => msg.id === messageId ? { ...msg, content: '' } : msg));
     setIsLoading(true);
 
-    const newResponse = await regenerateAiResponse(history, user.gender);
-    
-    setMessages(prev => prev.map(msg => msg.id === messageId ? { ...msg, content: newResponse } : msg));
-    setIsLoading(false);
+    try {
+      const newResponse = await regenerateAiResponse(history, user.gender);
+      
+      let index = 0;
+      function type() {
+        if (index < newResponse.length) {
+            setMessages(prev =>
+                prev.map(msg =>
+                    msg.id === messageId
+                        ? { ...msg, content: newResponse.substring(0, index + 1) }
+                        : msg
+                )
+            );
+            index++;
+            setTimeout(type, 20);
+        } else {
+            setIsLoading(false);
+        }
+      }
+      type();
+    } catch (error) {
+      console.error("Failed to regenerate response:", error);
+      toast({ title: 'An error occurred', description: 'Failed to regenerate response.', variant: 'destructive' });
+      setMessages(prev => prev.map(msg => msg.id === messageId ? {...msg, content: "Sorry, I couldn't think of a different response."} : msg))
+      setIsLoading(false);
+    }
   };
 
   const handleCopy = (content: string) => {
@@ -115,7 +162,7 @@ export default function ChatPage() {
 
       <ScrollArea className="flex-grow p-4" ref={scrollAreaRef}>
         <div className="space-y-6 max-w-4xl mx-auto">
-          {messages.map((message, index) => (
+          {messages.map((message) => (
             <div key={message.id} className={cn('flex items-end gap-3', message.role === 'user' ? 'justify-end' : 'justify-start')}>
               {message.role === 'model' && (
                 <Avatar className="h-8 w-8">
@@ -124,7 +171,7 @@ export default function ChatPage() {
                 </Avatar>
               )}
               <div className={cn('max-w-[75%] rounded-lg p-3 text-white', message.role === 'user' ? 'bg-primary' : 'bg-secondary')}>
-                {message.role === 'model' && message.content === '' ? (
+                {message.role === 'model' && message.content === '' && isLoading ? (
                   <div className="space-y-2">
                     <Skeleton className="h-4 w-48" />
                     <Skeleton className="h-4 w-32" />
@@ -133,7 +180,7 @@ export default function ChatPage() {
                   <p className="whitespace-pre-wrap">{message.content}</p>
                 )}
                 
-                {message.role === 'model' && message.content !== '' && (
+                {message.role === 'model' && message.content !== '' && !isLoading && (
                   <div className="flex gap-2 mt-2 border-t border-white/10 pt-2">
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopy(message.content)}>
                       <Copy className="h-4 w-4" />
@@ -149,20 +196,6 @@ export default function ChatPage() {
               </div>
             </div>
           ))}
-          {isLoading && messages[messages.length - 1]?.role !== 'model' && (
-             <div className='flex items-end gap-3 justify-start'>
-                <Avatar className="h-8 w-8">
-                  {personaAvatar && <AvatarImage src={personaAvatar.imageUrl} alt={persona.name} />}
-                  <AvatarFallback><Bot/></AvatarFallback>
-                </Avatar>
-                <div className='max-w-[75%] rounded-lg p-3 bg-secondary'>
-                  <div className="space-y-2">
-                      <Skeleton className="h-4 w-48" />
-                      <Skeleton className="h-4 w-32" />
-                    </div>
-                </div>
-              </div>
-          )}
         </div>
       </ScrollArea>
 
