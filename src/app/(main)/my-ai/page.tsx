@@ -12,8 +12,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Sparkles, Trash2, Bot } from 'lucide-react';
+import { Sparkles, Trash2, Bot, Info } from 'lucide-react';
 import type { CustomAI } from '@/types';
+import Link from 'next/link';
 
 const customAiSchema = z.object({
   provider: z.string().min(1, 'Please select an AI provider.'),
@@ -30,6 +31,14 @@ const availableProviders = [
   'Ghul (Claude)', 
   'Kasai (Groq)', 
   'Joutho (Together AI)'
+];
+
+const openRouterFreeModels = [
+    { id: 'z-ai/glm-4.5-air:free', name: 'GLM 4.5 Air (Z.ai)', description: 'Lightweight, agentic, thinking mode' },
+    { id: 'openai/gpt-oss-120b:free', name: 'GPT-OSS 120B (OpenAI)', description: 'Open-weight MoE, high-reasoning' },
+    { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B Instruct (Meta)', description: 'Multilingual, strong dialogue' },
+    { id: 'cognitivecomputations/dolphin-mistral-24b-venice-edition:free', name: 'Dolphin Mistral 24B Venice', description: 'Uncensored, creative' },
+    { id: 'liquid/lfm-2.5-1.2b-instruct:free', name: 'LFM 2.5 1.2B Thinking (LiquidAI)', description: 'Lightweight reasoning, edge-friendly' },
 ];
 
 export default function MyAiPage() {
@@ -83,8 +92,27 @@ export default function MyAiPage() {
   if (!user) {
     return null;
   }
+
+  if (user.subscription !== 'pro') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-full p-8 text-center bg-background">
+        <Card className="w-full max-w-lg">
+          <CardHeader>
+            <CardTitle className="font-headline text-3xl text-primary">Upgrade to Pro</CardTitle>
+            <CardDescription>This feature is available for Pro users only.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">Upgrade to Pro to use custom AI models, get unlimited messages, and access exclusive free models from OpenRouter.</p>
+            <Button asChild className="mt-6">
+              <Link href="/upgrade">Upgrade Now <Sparkles className="ml-2 h-4 w-4"/></Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
   
-  const pageTitle = user.gender === 'Male' ? 'My Magi AI' : 'My Jawra AI';
+  const pageTitle = user.gender === 'Male' ? 'My Magi AI Pro' : 'My Jawra AI Pro';
 
   return (
     <div className="p-4 md:p-8 space-y-8">
@@ -92,6 +120,29 @@ export default function MyAiPage() {
         <h1 className="font-headline text-4xl md:text-5xl">{pageTitle}</h1>
         <p className="text-muted-foreground text-lg mt-2">Manage your AI configurations.</p>
       </header>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>OpenRouter Free Models (Pro Perk)</CardTitle>
+          <CardDescription>As a Pro user, you get unlimited access to these high-quality free models from OpenRouter.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+              {openRouterFreeModels.map((model) => (
+                <div key={model.id} className="flex items-center justify-between p-3 rounded-lg border bg-card/50">
+                  <div className="flex items-center gap-3">
+                     <Bot className="h-6 w-6 text-primary" />
+                     <div>
+                        <p className="font-semibold text-md">{model.name}</p>
+                        <p className="text-xs text-muted-foreground">{model.description}</p>
+                     </div>
+                  </div>
+                  <Button variant="outline" size="sm">Select</Button>
+                </div>
+              ))}
+            </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

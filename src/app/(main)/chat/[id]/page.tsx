@@ -31,13 +31,13 @@ import {
 } from 'firebase/firestore';
 
 const MALE_LIMIT_MESSAGES = [
-    "আ মাদারচোদ {username}, তোর লিমিট শেষ রে খাঙ্কির বেটা! হল কেটে নিবো তোর গান্ডু 🔥 তোর Shibganj-এর বাড়িতে এসে তোর মায়েরে চুদবো যদি আবার মেসেজ পাঠাস! Upgrade to Magi Bot Pro করলে পাবি unlimited + Grok, Gemini, etc. 😈",
-    "খাঙ্কির পো {username}, তোর ধোন কাইটা ফেলবো! লিমিট খতম রে শুয়োরের বাচ্চা 💦 আবার পাঠাস না, না হলে তোর ফটো লিক! Upgrade to Magi Bot Pro for no limit."
+    "আ মাদারচোদ {username}, তোর লিমিট শেষ রে খাঙ্কির বেটা! 🔥 [Upgrade to Magi Bot Pro](https://upgrade-to-pro.com) করলে unlimited + ফ্রি OpenRouter models পাবি 😈",
+    "খাঙ্কির পো {username}, তোর ধোন কাইটা ফেলবো! লিমিট খতম রে শুয়োরের বাচ্চা 💦 আবার পাঠাস না, না হলে তোর ফটো লিক! [Upgrade to Magi Bot Pro](https://upgrade-to-pro.com) for no limit + custom AI."
 ];
 
 const FEMALE_LIMIT_MESSAGES = [
-    "ওই চিনাল মাগি, তোর মাঙ্গ ভিজে নাই এখনো? লিমিট শেষ রে রেন্ডি 🔥 কত ল্যাওড়া লাগবে তোর? Upgrade to Jawra Bot Pro করলে unlimited + Gemini, Grok, etc. 💦",
-    "হারামজাদি, তোর ভোদা ফাটাবো! লিমিট ওভার 😈 Upgrade to Khanki Bot Pro for no limit + custom AI."
+    "ওই চিনাল মাগি, লিমিট খতম রে রেন্ডি! 💦 [Upgrade to Jawra Bot Pro](https://upgrade-to-pro.com) কর 😏",
+    "হারামজাদি, তোর ভোদা ফাটাবো! লিমিট ওভার 😈 [Upgrade to Khanki Bot Pro](https://upgrade-to-pro.com) for no limit + custom AI."
 ];
 
 
@@ -111,13 +111,10 @@ export default function ChatPage() {
                 const limitMessages = user.gender === 'Male' ? MALE_LIMIT_MESSAGES : FEMALE_LIMIT_MESSAGES;
                 const randomMessage = limitMessages[Math.floor(Math.random() * limitMessages.length)];
                 const personalizedMessage = randomMessage.replace('{username}', user.username || 'LoFeel');
-                const upgradeLink = `[Upgrade to ${user?.gender === 'Male' ? 'Magi' : 'Jawra'} Bot Pro](https://upgrade-to-pro.com)`;
-                
-                const limitMessage = personalizedMessage + '\n\n' + upgradeLink;
                 
                 await addDoc(messagesCollection, {
                     role: 'model',
-                    content: limitMessage,
+                    content: personalizedMessage,
                     createdAt: serverTimestamp(),
                 });
                 setIsLoading(false);
@@ -158,19 +155,19 @@ export default function ChatPage() {
             const chatDocRef = doc(firestore, 'users', user.uid, 'chats', chatId);
             const chatDoc = await getDoc(chatDocRef);
 
-            if (!chatDoc.exists()) {
+            if (!chatDoc.exists() && messages?.length === 0) {
                 await setDoc(chatDocRef, {
                     title: initialPrompt.substring(0, 40) + (initialPrompt.length > 40 ? '...' : ''),
                     createdAt: serverTimestamp(),
                     userId: user.uid,
                 });
+                 await handleSendMessage(initialPrompt);
             }
-            await handleSendMessage(initialPrompt);
         };
         handleInitialPrompt();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialPrompt, user, firestore, chatId]);
+  }, [initialPrompt, user, firestore, chatId, messages]);
   
   useEffect(() => {
     scrollToBottom();
@@ -286,8 +283,8 @@ export default function ChatPage() {
               </div>
             </div>
           ))}
-          {isLoading && (
-              <div className={cn('flex items-end gap-3 justify-start')}>
+          {isLoading && !messages?.some(m => m.id === 'typing-indicator') && (
+              <div className={cn('flex items-end gap-3 justify-start')} id="typing-indicator">
                 <Avatar className="h-8 w-8">
                   {personaAvatar && <AvatarImage src={personaAvatar.imageUrl} alt={persona.name} />}
                   <AvatarFallback><Bot/></AvatarFallback>
