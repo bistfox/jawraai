@@ -57,3 +57,53 @@ export async function regenerateAiResponse(
     return 'উফফ... আবার একটু অন্যভাবে বলি?';
   }
 }
+
+export async function createPaymentCharge(plan: { amount: number; description: string; }, user: User) {
+  const apiKey = process.env.FELIXTA_API_KEY;
+  if (!apiKey) {
+    throw new Error('Payment gateway API key not configured.');
+  }
+
+  const payload = {
+    amount: plan.amount,
+    currency: 'BDT',
+    description: plan.description,
+    user_id: user.uid,
+    success_url: `http://localhost:9002/settings`,
+    cancel_url: `http://localhost:9002/upgrade`,
+    metadata: { 
+      plan: plan.description, 
+      user_display: user.username,
+      uid: user.uid
+    }
+  };
+
+  try {
+    const response = await fetch('https://pay.felixta.xyz/api/create-charge', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+        const errorBody = await response.json();
+        console.error('Felixta Pay API Error:', errorBody);
+        throw new Error(`Payment API request failed: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.status === 'success' && data.payment_url) {
+      return data.payment_url;
+    } else {
+      console.error('Invalid response from Felixta Pay:', data);
+      throw new Error('Failed to create payment charge.');
+    }
+  } catch (error) {
+    console.error('Error creating payment charge:', error);
+    throw new Error('Could not connect to payment gateway.');
+  }
+}

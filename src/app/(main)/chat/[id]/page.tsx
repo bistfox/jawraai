@@ -31,13 +31,13 @@ import {
 } from 'firebase/firestore';
 
 const MALE_LIMIT_MESSAGES = [
-    "আ মাদারচোদ {username}, তোর লিমিট শেষ রে খাঙ্কির বেটা! 🔥 [Upgrade to Magi Bot Pro](https://upgrade-to-pro.com) করলে unlimited + ফ্রি OpenRouter models পাবি 😈",
-    "খাঙ্কির পো {username}, তোর ধোন কাইটা ফেলবো! লিমিট খতম রে শুয়োরের বাচ্চা 💦 আবার পাঠাস না, না হলে তোর ফটো লিক! [Upgrade to Magi Bot Pro](https://upgrade-to-pro.com) for no limit + custom AI."
+    "আ মাদারচোদ {username}, তোর লিমিট শেষ রে খাঙ্কির বেটা! 🔥 তোর Shibganj-এর বাড়িতে এসে তোর মায়েরে চুদবো যদি আবার মেসেজ পাঠাস! [Upgrade to Magi Bot Pro](/upgrade) করলে unlimited + ফ্রি OpenRouter models পাবি 😈",
+    "খাঙ্কির পো {username}, তোর ধোন কাইটা ফেলবো! লিমিট খতম রে শুয়োরের বাচ্চা 💦 আবার পাঠাস না! [Upgrade to Magi Bot Pro](/upgrade) for no limit."
 ];
 
 const FEMALE_LIMIT_MESSAGES = [
-    "ওই চিনাল মাগি, লিমিট খতম রে রেন্ডি! 💦 [Upgrade to Jawra Bot Pro](https://upgrade-to-pro.com) কর 😏",
-    "হারামজাদি, তোর ভোদা ফাটাবো! লিমিট ওভার 😈 [Upgrade to Khanki Bot Pro](https://upgrade-to-pro.com) for no limit + custom AI."
+    "ওই চিনাল মাগি, লিমিট খতম রে রেন্ডি! 💦 Jawra Bot Pro হবি? [এখানে ক্লিক কর](/upgrade) 😏",
+    "হারামজাদি, তোর ভোদা ফাটাবো! লিমিট ওভার 😈 [Upgrade to Khanki Bot Pro](/upgrade) for no limit + custom AI."
 ];
 
 
@@ -54,6 +54,7 @@ export default function ChatPage() {
 
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
 
   const persona = user?.gender === 'Male' 
     ? { name: 'Khangi AI', avatarId: 'khangi-ai-avatar' }
@@ -83,8 +84,9 @@ export default function ChatPage() {
   const handleSendMessage = async (messageText: string) => {
     if (!messageText.trim() || !user?.gender || !chatId || !firestore) return;
 
-    setInput('');
     const userMessageContent = messageText;
+    setInput('');
+    setIsLoading(true);
 
     const messagesCollection = collection(firestore, 'users', user.uid, 'chats', chatId, 'messages');
     
@@ -93,8 +95,8 @@ export default function ChatPage() {
       content: userMessageContent,
       createdAt: serverTimestamp(),
     });
-
-    setIsLoading(true);
+    
+    setIsTyping(true);
 
     const userDocRef = doc(firestore, 'users', user.uid);
     try {
@@ -117,6 +119,7 @@ export default function ChatPage() {
                     content: personalizedMessage,
                     createdAt: serverTimestamp(),
                 });
+                setIsTyping(false);
                 setIsLoading(false);
                 return; 
             }
@@ -143,6 +146,7 @@ export default function ChatPage() {
         createdAt: serverTimestamp(),
       });
     } finally {
+      setIsTyping(false);
       setIsLoading(false);
     }
   };
@@ -150,32 +154,36 @@ export default function ChatPage() {
   useEffect(() => {
     if (initialPrompt && user && firestore && !initialPromptHandled.current) {
         const handleInitialPrompt = async () => {
+            if (messages && messages.length > 0) {
+                 initialPromptHandled.current = true;
+                 return;
+            };
+
             initialPromptHandled.current = true;
             
             const chatDocRef = doc(firestore, 'users', user.uid, 'chats', chatId);
             const chatDoc = await getDoc(chatDocRef);
 
-            if (!chatDoc.exists() && messages?.length === 0) {
+            if (!chatDoc.exists()) {
                 await setDoc(chatDocRef, {
                     title: initialPrompt.substring(0, 40) + (initialPrompt.length > 40 ? '...' : ''),
                     createdAt: serverTimestamp(),
                     userId: user.uid,
                 });
-                 await handleSendMessage(initialPrompt);
             }
+            await handleSendMessage(initialPrompt);
         };
         handleInitialPrompt();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialPrompt, user, firestore, chatId, messages]);
+  }, [initialPrompt, user, firestore, chatId, messages, handleSendMessage]);
   
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isTyping]);
 
 
   const handleRegenerate = async () => {
-    if (!user?.gender || !messages || messages.length === 0) return;
+    if (!user?.gender || !messages || messages.length === 0 || isLoading) return;
     
     const lastModelMessageIndex = messages.map(m => m.role).lastIndexOf('model');
     if (lastModelMessageIndex === -1) return;
@@ -189,6 +197,7 @@ export default function ChatPage() {
     const history = messages.slice(0, lastModelMessageIndex);
     
     setIsLoading(true);
+    setIsTyping(true);
 
     try {
       const newResponse = await regenerateAiResponse(history, user.gender);
@@ -200,6 +209,7 @@ export default function ChatPage() {
       toast({ title: 'An error occurred', description: 'Failed to regenerate response.', variant: 'destructive' });
     } finally {
        setIsLoading(false);
+       setIsTyping(false);
     }
   };
 
@@ -221,7 +231,7 @@ export default function ChatPage() {
     return (
       <p className="whitespace-pre-wrap">
         {parts.map((part, index) => {
-          if (index % 3 === 1) { // This is the link text
+          if (index % 3 === 1) { 
             const linkUrl = parts[index + 1];
             const linkText = part;
             const isInternal = linkUrl.startsWith('/');
@@ -235,10 +245,10 @@ export default function ChatPage() {
               </a>
             );
           }
-          if (index % 3 === 2) { // This is the link URL, already handled
+          if (index % 3 === 2) { 
             return null;
           }
-          return part; // This is regular text
+          return part; 
         })}
       </p>
     );
@@ -283,7 +293,7 @@ export default function ChatPage() {
               </div>
             </div>
           ))}
-          {isLoading && !messages?.some(m => m.id === 'typing-indicator') && (
+          {isTyping && (
               <div className={cn('flex items-end gap-3 justify-start')} id="typing-indicator">
                 <Avatar className="h-8 w-8">
                   {personaAvatar && <AvatarImage src={personaAvatar.imageUrl} alt={persona.name} />}
@@ -298,7 +308,7 @@ export default function ChatPage() {
               </div>
           )}
 
-          {lastMessageIsModel && !isLoading && (
+          {lastMessageIsModel && !isLoading && !isTyping && (
               <div className="flex justify-start ml-12">
                   <div className="flex gap-2 mt-2 border rounded-full border-white/10 p-1">
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopy(messages[messages.length-1].content)}>
