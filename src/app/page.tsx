@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -64,6 +64,24 @@ export default function LoginPage() {
   const [tab, setTab] = useState('email');
   const [otpSent, setOtpSent] = useState(false);
 
+  useEffect(() => {
+    if (!window.recaptchaVerifier) {
+      const recaptchaContainer = document.getElementById('recaptcha-container');
+      if (recaptchaContainer) {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaContainer, {
+          size: 'invisible',
+          callback: (response: any) => {
+            console.log("reCAPTCHA verified");
+          },
+          'expired-callback': () => {
+             toast({ title: 'reCAPTCHA expired', description: 'Please try sending the OTP again.', variant: 'destructive' });
+          }
+        });
+      }
+    }
+  }, [auth, toast]);
+
+
   const emailForm = useForm<z.infer<typeof emailSchema>>({
     resolver: zodResolver(emailSchema),
     defaultValues: { email: '', password: '' },
@@ -73,17 +91,6 @@ export default function LoginPage() {
     resolver: zodResolver(phoneSchema),
     defaultValues: { phone: '', otp: '' },
   });
-
-  const setupRecaptcha = (authInstance: FirebaseAuth) => {
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(authInstance, 'recaptcha-container', {
-        size: 'invisible',
-        callback: (response: any) => {
-          // reCAPTCHA solved, allow signInWithPhoneNumber.
-        },
-      });
-    }
-  };
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
@@ -122,8 +129,13 @@ export default function LoginPage() {
 
   const onPhoneSubmit = async (values: z.infer<typeof phoneSchema>) => {
     setIsLoading(true);
-    setupRecaptcha(auth);
-    const appVerifier = window.recaptchaVerifier!;
+    const appVerifier = window.recaptchaVerifier;
+
+    if (!appVerifier) {
+        toast({ title: 'Error', description: 'reCAPTCHA not ready. Please wait a moment and try again.', variant: 'destructive'});
+        setIsLoading(false);
+        return;
+    }
 
     if (!otpSent) {
       const phoneNumber = `+88${values.phone}`;
@@ -135,10 +147,7 @@ export default function LoginPage() {
       } catch (error: any) {
         console.error(error);
         toast({ title: 'Phone Sign-in Error', description: 'Could not send OTP. Please check the number or try again later.', variant: 'destructive' });
-        appVerifier.render().then((widgetId) => {
-            // @ts-ignore
-            grecaptcha.reset(widgetId);
-        });
+        appVerifier.clear();
       }
     } else {
         if (!values.otp) {
