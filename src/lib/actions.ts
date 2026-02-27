@@ -87,6 +87,7 @@ export async function createPaymentCharge(plan: { amount: number; description: s
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
       body: JSON.stringify(payload),
     });
