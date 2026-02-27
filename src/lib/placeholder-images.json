@@ -1,3 +1,46 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "login-bg",
+      "description": "A blurry, sensual silhouette against a dark background.",
+      "imageUrl": "https://images.unsplash.com/photo-1624491611659-717e7b4b2a44?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxzaWxob3VldHRlJTIwc2Vuc3VhbHxlbnwwfHx8fDE3NzIxODUwMTF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "silhouette sensual"
+    },
+    {
+      "id": "khangi-ai-avatar",
+      "description": "Avatar for Khangi AI persona.",
+      "imageUrl": "https://images.unsplash.com/photo-1574539602047-548bf9557352?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxzZXh5JTIwd29tYW58ZW58MHx8fHwxNzcyMTg1MDExfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "sexy woman"
+    },
+    {
+      "id": "jawra-ai-avatar",
+      "description": "Avatar for Jawra AI persona.",
+      "imageUrl": "https://images.unsplash.com/photo-1740153369402-566f5529fb1f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxtYXNjdWxpbmUlMjBtYW58ZW58MHx8fHwxNzcyMTg1MDExfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "masculine man"
+    },
+    {
+      "id": "carousel-1",
+      "description": "Abstract image for carousel card 1.",
+      "imageUrl": "https://images.unsplash.com/photo-1512919436013-a21528d410e2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxhYnN0cmFjdCUyMHBhc3Npb258ZW58MHx8fHwxNzcyMTg1MDExfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "abstract passion"
+    },
+    {
+      "id": "carousel-2",
+      "description": "Abstract image for carousel card 2.",
+      "imageUrl": "https://images.unsplash.com/photo-1666556277330-f74547e25e79?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxhYnN0cmFjdCUyMGRlc2lyZXxlbnwwfHx8fDE3NzIxODUwMTF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "abstract desire"
+    },
+    {
+      "id": "carousel-3",
+      "description": "Abstract image for carousel card 3.",
+      "imageUrl": "https://images.unsplash.com/photo-1704627005490-afbf31aa20ee?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxzZW5zdWFsJTIwdGV4dHVyZXxlbnwwfHx8fDE3NzIxODUwMTF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "sensual texture"
+    },
+    {
+      "id": "carousel-4",
+      "description": "Abstract image for carousel card 4.",
+      "imageUrl": "https://images.unsplash.com/photo-1593314754527-2b7b21fc1071?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxkYXJrJTIwcm9tYW5jZXxlbnwwfHx8fDE3NzIxODUwMTF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "dark romance"
+    }
+  ]
 }
