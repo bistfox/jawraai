@@ -102,6 +102,16 @@ export default function MainAppLayout({
               </SidebarMenuButton>
             </SidebarMenuItem>
             )}
+             {user.subscription !== 'pro' && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === '/upgrade'} tooltip={{ children: 'Upgrade to Pro' }}>
+                  <Link href="/upgrade">
+                    <Sparkles className="text-primary" />
+                    <span>Upgrade to Pro</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
