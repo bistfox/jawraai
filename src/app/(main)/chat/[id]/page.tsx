@@ -44,8 +44,9 @@ const FEMALE_LIMIT_MESSAGES = [
 
 const UPGRADE_LINK = "\n\n[Upgrade to Pro](https://upgrade-to-pro.com)";
 
-export default function ChatPage({ params }: { params: { id: string } }) {
-  const { id: chatId } = params;
+export default function ChatPage() {
+  const params = useParams();
+  const chatId = params.id as string;
   const { user } = useUser();
   const searchParams = useSearchParams();
   const initialPrompt = searchParams.get('prompt');
