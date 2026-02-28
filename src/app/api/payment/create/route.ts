@@ -9,7 +9,8 @@ export async function POST(request: Request) {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL;
 
         if (!apiKey || !baseUrl || !appUrl) {
-            return NextResponse.json({ message: 'Server configuration error.' }, { status: 500 });
+            console.error('Server configuration error: Missing payment environment variables.');
+            return NextResponse.json({ message: 'Server configuration error. Please contact support.' }, { status: 500 });
         }
 
         const payload = {
@@ -38,13 +39,13 @@ export async function POST(request: Request) {
 
         if (!response.ok) {
             console.error('Felixta Pay API Error:', data);
-            return NextResponse.json({ message: data.message || 'Failed to create payment charge.' }, { status: response.status });
+            return NextResponse.json({ message: data.message || 'Failed to create payment charge from the gateway.' }, { status: response.status });
         }
 
         return NextResponse.json(data);
 
     } catch (error: any) {
         console.error('Error creating payment charge:', error);
-        return NextResponse.json({ message: error.message || 'Payment initiation failed.' }, { status: 500 });
+        return NextResponse.json({ message: 'Could not connect to the payment gateway. Please check server configuration and logs.' }, { status: 500 });
     }
 }

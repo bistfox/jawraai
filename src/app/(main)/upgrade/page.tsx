@@ -89,10 +89,10 @@ export default function UpgradePage() {
 
             const data = await response.json();
 
-            if (data?.checkout_url) {
+            if (response.ok && data?.checkout_url) {
                 router.push(data.checkout_url);
             } else {
-                throw new Error(data.error?.message || 'Payment failed to initiate.');
+                throw new Error(data.message || 'Payment failed to initiate.');
             }
         } catch (error: any) {
             toast({
