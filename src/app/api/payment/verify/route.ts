@@ -4,7 +4,11 @@ import { Timestamp } from 'firebase-admin/firestore';
 
 // This function verifies the payment with Felixta Pay
 async function verifyFelixtaPayment(chargeId: string, apiKey: string) {
-    const response = await fetch(`https://pay.felixta.xyz/api/verify-payments?charge_id=${chargeId}`, {
+    const baseUrl = process.env.PAYMENT_BASE_URL;
+    if (!baseUrl) {
+        throw new Error('Payment gateway base URL not configured.');
+    }
+    const response = await fetch(`${baseUrl}/verify-payments?charge_id=${chargeId}`, {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${apiKey}`,
@@ -39,7 +43,7 @@ async function updateUserSubscription(userId: string, planName: string) {
 
 export async function POST(request: Request) {
     const { transaction_id, charge_id } = await request.json();
-    const apiKey = process.env.FELIXTA_API_KEY;
+    const apiKey = process.env.PAYMENT_API_KEY;
 
     if (!apiKey) {
         return NextResponse.json({ message: 'Payment gateway API key not configured.' }, { status: 500 });

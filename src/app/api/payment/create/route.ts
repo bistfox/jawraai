@@ -8,11 +8,15 @@ type Plan = {
 
 export async function POST(request: Request) {
     const { plan, user }: { plan: Plan, user: User } = await request.json();
-    const apiKey = process.env.FELIXTA_API_KEY;
+    const apiKey = process.env.PAYMENT_API_KEY;
+    const baseUrl = process.env.PAYMENT_BASE_URL;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
 
     if (!apiKey) {
         return NextResponse.json({ message: 'Payment gateway API key not configured.' }, { status: 500 });
+    }
+    if (!baseUrl) {
+        return NextResponse.json({ message: 'Payment gateway base URL not configured.' }, { status: 500 });
     }
     if (!appUrl) {
         return NextResponse.json({ message: 'Application URL is not configured.' }, { status: 500 });
@@ -40,7 +44,7 @@ export async function POST(request: Request) {
     };
 
     try {
-        const response = await fetch('https://pay.felixta.xyz/api/create-charge', {
+        const response = await fetch(`${baseUrl}/create-charge`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
