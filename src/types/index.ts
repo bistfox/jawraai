@@ -18,6 +18,8 @@ export interface User {
   customAIs?: CustomAI[];
   subscriptionPlan?: 'Basic Monthly' | 'Pro Monthly' | 'Premium Monthly';
   subscriptionExpiry?: Timestamp;
+  subscriptionStatus?: 'active' | 'inactive';
+  subscriptionStart?: Timestamp;
 }
 
 export interface Message {

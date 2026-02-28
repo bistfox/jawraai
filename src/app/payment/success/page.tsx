@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,10 +16,9 @@ function SuccessContent() {
     const [message, setMessage] = useState('Verifying your payment, please wait...');
 
     useEffect(() => {
-        const transaction_id = searchParams.get('transaction_id');
-        const charge_id = searchParams.get('charge_id');
+        const payment_id = searchParams.get('payment_id');
 
-        if (!transaction_id || !charge_id) {
+        if (!payment_id) {
             setStatus('error');
             setMessage('Invalid payment details found in URL. Please contact support.');
             return;
@@ -30,7 +29,7 @@ function SuccessContent() {
                 const response = await fetch('/api/payment/verify', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ transaction_id, charge_id }),
+                    body: JSON.stringify({ payment_id }),
                 });
 
                 const result = await response.json();

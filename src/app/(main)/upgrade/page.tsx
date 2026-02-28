@@ -67,7 +67,7 @@ export default function UpgradePage() {
     const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
     const handleUpgrade = async (plan: Plan) => {
-        if (!user) {
+        if (!user || !user.username) {
             toast({ title: 'You must be logged in to upgrade.', variant: 'destructive' });
             return;
         }
@@ -78,19 +78,21 @@ export default function UpgradePage() {
             const response = await fetch('/api/payment/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ plan, user }),
+                body: JSON.stringify({
+                    fullName: user.username,
+                    email: user.email,
+                    amount: plan.price,
+                    userId: user.uid,
+                    plan: plan.name,
+                }),
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to create payment link.');
-            }
+            const data = await response.json();
 
-            const { payment_url } = await response.json();
-            if (payment_url) {
-                router.push(payment_url);
+            if (data?.checkout_url) {
+                router.push(data.checkout_url);
             } else {
-                throw new Error('Payment URL not found in response.');
+                throw new Error(data.error?.message || 'Payment failed to initiate.');
             }
         } catch (error: any) {
             toast({
