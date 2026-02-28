@@ -84,41 +84,41 @@ export default function ChatHistoryPage() {
 
   return (
     <div className="p-4 md:p-8">
-      <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-headline text-4xl md:text-5xl">Chat History</h1>
-          <p className="text-muted-foreground text-lg mt-2">Revisit or delete your past conversations.</p>
+          <h1 className="font-headline text-3xl sm:text-4xl md:text-5xl">Chat History</h1>
+          <p className="text-muted-foreground text-base mt-1">Revisit or delete your past conversations.</p>
         </div>
         {!isLoading && chats && chats.length > 0 && (
-            <Button variant="destructive" onClick={() => setIsDeleteAllOpen(true)}>
+            <Button variant="destructive" size="sm" onClick={() => setIsDeleteAllOpen(true)}>
                 <Trash2 className="mr-2 h-4 w-4" /> Clear All
             </Button>
         )}
       </header>
       
       {isLoading && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 rounded-lg" />
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded-lg" />
           ))}
         </div>
       )}
 
       {!isLoading && chats && chats.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
           {chats.map((chat) => (
-            <Link href={`/chat/${chat.id}`} key={chat.id}>
-              <Card className="hover:border-primary/80 hover:bg-card/90 transition-all h-full relative">
-                <CardHeader>
-                  <CardTitle className="truncate pr-8">{chat.title}</CardTitle>
-                  <CardDescription>
+            <Link href={`/chat/${chat.id}`} key={chat.id} className="group block">
+              <Card className="hover:border-primary/80 hover:bg-card/90 transition-all h-full relative group-focus-within:ring-2 group-focus-within:ring-ring group-focus-within:ring-offset-2 group-focus-within:ring-offset-background">
+                <CardHeader className="p-3 sm:p-4">
+                  <CardTitle className="truncate pr-7 text-sm font-semibold sm:text-base">{chat.title}</CardTitle>
+                  <CardDescription className="text-xs mt-1">
                     {chat.createdAt ? `${formatDistanceToNow(chat.createdAt.toDate(), { addSuffix: true })}` : 'No date'}
                   </CardDescription>
                 </CardHeader>
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="absolute top-3 right-3 h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                  className="absolute top-1 right-1 h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                   onClick={(e) => {
                     e.preventDefault(); 
                     e.stopPropagation(); 
@@ -135,10 +135,10 @@ export default function ChatHistoryPage() {
       )}
 
       {!isLoading && (!chats || chats.length === 0) && (
-        <div className="flex flex-col items-center justify-center text-center h-64 border-2 border-dashed rounded-lg bg-card/50">
-            <MessageSquare className="w-16 h-16 text-muted-foreground mb-4" />
-            <h2 className="text-2xl font-semibold">No Chats Yet</h2>
-            <p className="text-muted-foreground mt-2 mb-4">Start a new conversation to see your history here.</p>
+        <div className="flex flex-col items-center justify-center text-center h-64 border-2 border-dashed rounded-lg bg-card/50 p-4 mt-8">
+            <MessageSquare className="w-12 h-12 text-muted-foreground mb-4" />
+            <h2 className="text-xl font-semibold">No Chats Yet</h2>
+            <p className="text-muted-foreground mt-1 mb-4 max-w-xs">Start a new conversation to see your history here.</p>
             <Button onClick={handleNewChat}>Start New Chat</Button>
         </div>
       )}
