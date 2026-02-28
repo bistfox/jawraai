@@ -297,7 +297,7 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col h-full">
       <header className="sticky top-0 z-10 flex items-center gap-4 p-4 border-b bg-background">
-        <Avatar>
+        <Avatar className="h-8 w-8">
           {personaAvatar && <AvatarImage src={personaAvatar.imageUrl} alt={persona.name} data-ai-hint={personaAvatar.imageHint} />}
           <AvatarFallback><Bot/></AvatarFallback>
         </Avatar>
@@ -313,33 +313,39 @@ export default function ChatPage() {
         </div>
       </header>
 
-      <ScrollArea className="flex-grow p-4" ref={scrollAreaRef}>
-        <div className="space-y-6 max-w-4xl mx-auto">
+      <ScrollArea className="flex-grow p-2 sm:p-4" ref={scrollAreaRef}>
+        <div className="space-y-4 sm:space-y-6 max-w-4xl mx-auto">
           {(isLoadingMessages && !messages) && (
               <div className="flex justify-center items-center h-full">
                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
               </div>
           )}
           {messages && messages.map((message) => (
-            <div key={message.id} className={cn('flex items-end gap-3', message.role === 'user' ? 'justify-end' : 'justify-start')}>
+            <div key={message.id} className={cn('flex items-start gap-2 sm:gap-3', message.role === 'user' ? 'justify-end' : 'justify-start')}>
               {message.role === 'model' && (
-                <Avatar className="h-8 w-8">
+                <Avatar className="h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0">
                   {personaAvatar && <AvatarImage src={personaAvatar.imageUrl} alt={persona.name} />}
                   <AvatarFallback><Bot/></AvatarFallback>
                 </Avatar>
               )}
-              <div className={cn('max-w-[75%] rounded-lg p-3 text-white', message.role === 'user' ? 'bg-primary' : 'bg-secondary')}>
+              <div className={cn('max-w-[80%] rounded-xl px-4 py-3', message.role === 'user' ? 'bg-primary text-white' : 'bg-secondary text-secondary-foreground')}>
                 <MessageContent content={message.content} />
               </div>
+               {message.role === 'user' && user && (
+                <Avatar className="h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0">
+                   <AvatarImage src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.username}`} />
+                   <AvatarFallback>{user.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+              )}
             </div>
           ))}
           {isTyping && (
-              <div className={cn('flex items-end gap-3 justify-start')} id="typing-indicator">
-                <Avatar className="h-8 w-8">
+              <div className={cn('flex items-start gap-2 sm:gap-3 justify-start')} id="typing-indicator">
+                <Avatar className="h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0">
                   {personaAvatar && <AvatarImage src={personaAvatar.imageUrl} alt={persona.name} />}
                   <AvatarFallback><Bot/></AvatarFallback>
                 </Avatar>
-                <div className={cn('max-w-[75%] rounded-lg p-3 text-white bg-secondary')}>
+                <div className={cn('max-w-[80%] rounded-xl p-3 bg-secondary text-secondary-foreground')}>
                     <div className="space-y-2">
                         <Skeleton className="h-4 w-48 bg-background/50" />
                         <Skeleton className="h-4 w-32 bg-background/50" />
@@ -349,7 +355,7 @@ export default function ChatPage() {
           )}
 
           {lastMessageIsModel && !isLoading && !isTyping && (
-              <div className="flex justify-start ml-12">
+              <div className="flex justify-start pl-8 sm:pl-11">
                   <div className="flex gap-2 mt-2 border rounded-full border-white/10 p-1">
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopy(messages[messages.length-1].content)}>
                       <Copy className="h-4 w-4" />
@@ -366,10 +372,10 @@ export default function ChatPage() {
         </div>
       </ScrollArea>
 
-      <footer className="sticky bottom-16 md:bottom-0 z-10 p-4 border-t bg-background">
+      <footer className="sticky bottom-16 md:bottom-0 z-10 p-2 sm:p-4 border-t bg-background/80 backdrop-blur-sm">
         <div className="max-w-4xl mx-auto">
           <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(input); }}>
-            <div className="flex items-center gap-2">
+            <div className="flex items-end gap-2">
               <Button type="button" variant="ghost" size="icon" disabled={isLoading}><Mic/></Button>
               <Button type="button" variant="ghost" size="icon" disabled={isLoading}><Paperclip/></Button>
               <Textarea
@@ -382,7 +388,7 @@ export default function ChatPage() {
                   }
                 }}
                 placeholder="তোমার নোংরা ইচ্ছাগুলো বলো..."
-                className="flex-1 resize-none"
+                className="flex-1 resize-none min-h-[40px] max-h-36"
                 rows={1}
                 disabled={isLoading}
               />

@@ -45,7 +45,7 @@ declare global {
 function JawraLogo() {
   return (
     <div className="flex flex-col items-center text-center">
-      <Bot className="w-16 h-16 text-primary mb-4" />
+      <Bot className="w-12 h-12 sm:w-16 sm:h-16 text-primary mb-4" />
       <h1 className="font-headline text-5xl md:text-6xl font-bold text-primary" style={{ textShadow: '0 0 10px hsl(var(--primary)), 0 0 20px hsl(var(--primary))' }}>
         JawraAI
       </h1>
@@ -167,7 +167,7 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-center p-4 bg-gradient-to-br from-background via-black to-background">
+    <main className="relative flex min-h-screen flex-col items-center justify-start sm:justify-center p-4 pt-16 sm:pt-4 bg-gradient-to-br from-background via-black to-background">
       <Card className="w-full max-w-md z-10 bg-card/80 backdrop-blur-sm border-primary/20 shadow-lg shadow-primary/10">
         <CardHeader className="text-center">
           <JawraLogo />
