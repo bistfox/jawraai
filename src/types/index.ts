@@ -14,6 +14,8 @@ export interface User {
   gender?: 'Male' | 'Female';
   messageCount?: number;
   lastMessageDate?: string;
+  imageCount?: number;
+  lastImageDate?: string;
   subscription?: 'free' | 'pro';
   customAIs?: CustomAI[];
   subscriptionPlan?: 'Basic Monthly' | 'Pro Monthly' | 'Premium Monthly';

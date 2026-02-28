@@ -68,6 +68,8 @@ export default function OnboardingPage() {
             email: user.email, // carry over email from auth
             subscription: 'free',
             customAIs: [],
+            messageCount: 0,
+            imageCount: 0,
         };
         await setDoc(doc(firestore, 'users', user.uid), userProfile);
         

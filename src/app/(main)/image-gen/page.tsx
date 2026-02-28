@@ -1,7 +1,44 @@
-// app/image-gen/page.tsx
 'use client';
 
 import { useState } from 'react';
+import { useUser } from '@/lib/hooks/use-user';
+import { useFirestore } from '@/firebase';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import type { User } from '@/types';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { ImageIcon, Sparkles, Loader2 } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+
+const ErrorContent = ({ content }: { content: string }) => {
+  const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+  const parts = content.split(linkRegex);
+
+  if (parts.length <= 1) {
+    return <p className="text-sm text-destructive">{content}</p>;
+  }
+
+  return (
+    <p className="text-sm text-destructive">
+      {parts.map((part, index) => {
+        if (index % 3 === 1) {
+          const linkUrl = parts[index + 1];
+          const linkText = part;
+          return (
+            <Link key={index} href={linkUrl} className="underline font-bold hover:text-destructive/80">
+              {linkText}
+            </Link>
+          );
+        }
+        if (index % 3 === 2) { return null; }
+        return part;
+      })}
+    </p>
+  );
+};
+
 
 export default function ImageGenPage() {
   const [prompt, setPrompt] = useState('');
@@ -9,9 +46,17 @@ export default function ImageGenPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const { user } = useUser();
+  const firestore = useFirestore();
+
   const handleGenerate = async () => {
     if (!prompt.trim()) {
-      setError('প্রম্পট লিখ রে গান্ডু! 😈');
+      setError('প্রম্পট লিখুন! 😈');
+      return;
+    }
+
+    if (!user || !firestore) {
+      setError('ছবি তৈরি করতে লগইন করুন।');
       return;
     }
 
@@ -20,6 +65,32 @@ export default function ImageGenPage() {
     setImageUrl(null);
 
     try {
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        throw new Error('User profile not found.');
+      }
+
+      const userData = userDoc.data() as User;
+
+      if (userData.subscription !== 'pro') {
+        const today = new Date().toISOString().split('T')[0];
+        const lastDate = userData.lastImageDate;
+        const currentCount = (lastDate === today && userData.imageCount) ? userData.imageCount : 0;
+
+        if (currentCount >= 1) {
+          setError('দৈনিক ফ্রি লিমিট শেষ! 🔥 আনলিমিটেড জেনারেশনের জন্য [Pro-তে আপগ্রেড করুন](/upgrade)। 😈');
+          setLoading(false);
+          return;
+        }
+
+        await updateDoc(userDocRef, {
+          imageCount: currentCount + 1,
+          lastImageDate: today,
+        });
+      }
+
       const formData = new FormData();
       formData.append('prompt', prompt);
 
@@ -43,44 +114,45 @@ export default function ImageGenPage() {
   };
 
   return (
-    <div style={{ maxWidth: '600px', margin: '40px auto', padding: '20px', background: '#111', borderRadius: '15px', border: '2px solid #ff0066', color: 'white' }}>
-      <h1 style={{ textAlign: 'center', color: '#ff0066' }}>🔥 Advance Uncensored NSFW Generator 🔥</h1>
-      <p style={{ textAlign: 'center' }}>যত নোংরা প্রম্পট দিবি, ততই খারাপ ইমেজ আসবে 😈</p>
+    <div className="p-4 md:p-8 space-y-8">
+      <header>
+        <h1 className="font-headline text-4xl md:text-5xl">Uncensored Image Generator</h1>
+        <p className="text-muted-foreground text-lg mt-2">আপনার কল্পনাকে ছবিতে রূপ দিন, কোনো সীমাবদ্ধতা ছাড়াই। 😈</p>
+      </header>
 
-      <textarea
-        value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
-        placeholder="এখানে নোংরা প্রম্পট লিখ... e.g. a girl getting double penetrated with cum dripping from pussy and ass..."
-        rows={5}
-        style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #ff0066', background: '#222', color: 'white', fontSize: '16px' }}
-      />
-
-      <button
-        onClick={handleGenerate}
-        disabled={loading}
-        style={{
-          background: loading ? '#555' : '#ff0066',
-          color: 'white',
-          border: 'none',
-          padding: '15px 30px',
-          fontSize: '20px',
-          borderRadius: '50px',
-          cursor: loading ? 'not-allowed' : 'pointer',
-          margin: '20px auto',
-          display: 'block',
-          boxShadow: '0 0 15px #ff0066',
-        }}
-      >
-        {loading ? 'Generating... wait রে মাগি 💦' : 'Generate NSFW Image 😈'}
-      </button>
-
-      {error && <p style={{ color: 'red', textAlign: 'center' }}>{error}</p>}
-
-      {imageUrl && (
-        <div style={{ textAlign: 'center', marginTop: '20px' }}>
-          <img src={imageUrl} alt="Generated NSFW Image" style={{ maxWidth: '100%', borderRadius: '10px', border: '2px solid #ff0066' }} />
-        </div>
-      )}
+      <Card className="max-w-3xl mx-auto">
+        <CardHeader>
+          <CardTitle>Create Your Image</CardTitle>
+          <CardDescription>এখানে আপনার নোংরা বা সৃজনশীল প্রম্পট লিখুন।</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }}>
+            <div className="grid w-full gap-4">
+              <Textarea
+                placeholder="e.g., a beautiful girl smiling, detailed face, cinematic lighting..."
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                rows={4}
+                disabled={loading}
+              />
+              <Button type="submit" size="lg" disabled={loading}>
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                {loading ? 'Generating... Please wait...' : 'Generate Image'}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+        {(error || imageUrl) && (
+            <CardFooter className="flex flex-col items-center gap-4">
+                {error && <ErrorContent content={error} />}
+                {imageUrl && (
+                    <div className="relative aspect-video w-full mt-4 overflow-hidden rounded-lg border">
+                        <Image src={imageUrl} alt="Generated Image" fill className="object-contain" />
+                    </div>
+                )}
+            </CardFooter>
+        )}
+      </Card>
     </div>
   );
 }

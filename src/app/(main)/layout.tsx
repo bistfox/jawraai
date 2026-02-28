@@ -96,19 +96,17 @@ export default function MainAppLayout({
                 <Link href="/chat/history"><MessageSquare /><span>Chat History</span></Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname === '/image-gen'} tooltip={{ children: 'Image Generator' }}>
+                <Link href="/image-gen"><Image /><span>Image Gen</span></Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
             {user.subscription === 'pro' && (
-            <>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={pathname === '/my-ai'} tooltip={{children: 'My AI'}}>
                   <Link href="/my-ai"><Sparkles /><span>My AI</span></Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === '/image-gen'} tooltip={{ children: 'Image Generator' }}>
-                  <Link href="/image-gen"><Image /><span>Image Gen</span></Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </>
             )}
              {user.subscription !== 'pro' && (
               <SidebarMenuItem>
