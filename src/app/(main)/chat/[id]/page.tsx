@@ -95,6 +95,7 @@ export default function ChatPage() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [textareaHeight, setTextareaHeight] = useState('auto');
 
   const persona = user?.gender === 'Male' 
     ? { name: 'Khangi AI', avatarId: 'khangi-ai-avatar' }
@@ -215,7 +216,8 @@ export default function ChatPage() {
         };
         handleInitialPrompt();
     }
-  }, [initialPrompt, user, firestore, chatId, messages, handleSendMessage]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPrompt, user, firestore, chatId, messages]);
   
   useEffect(() => {
     scrollToBottom();
@@ -293,6 +295,13 @@ export default function ChatPage() {
       </p>
     );
   };
+  
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    const textarea = e.target;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -321,14 +330,14 @@ export default function ChatPage() {
               </div>
           )}
           {messages && messages.map((message) => (
-            <div key={message.id} className={cn('flex items-start gap-2 sm:gap-3', message.role === 'user' ? 'justify-end' : 'justify-start')}>
+            <div key={message.id} className={cn('flex items-end gap-2 sm:gap-3', message.role === 'user' ? 'justify-end' : 'justify-start')}>
               {message.role === 'model' && (
                 <Avatar className="h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0">
                   {personaAvatar && <AvatarImage src={personaAvatar.imageUrl} alt={persona.name} />}
                   <AvatarFallback><Bot/></AvatarFallback>
                 </Avatar>
               )}
-              <div className={cn('max-w-[80%] rounded-xl px-4 py-3', message.role === 'user' ? 'bg-primary text-white' : 'bg-secondary text-secondary-foreground')}>
+              <div className={cn('max-w-[80%] rounded-2xl px-4 py-3', message.role === 'user' ? 'bg-primary text-white rounded-br-none' : 'bg-secondary text-secondary-foreground rounded-bl-none')}>
                 <MessageContent content={message.content} />
               </div>
                {message.role === 'user' && user && (
@@ -340,23 +349,24 @@ export default function ChatPage() {
             </div>
           ))}
           {isTyping && (
-              <div className={cn('flex items-start gap-2 sm:gap-3 justify-start')} id="typing-indicator">
+              <div className={cn('flex items-end gap-2 sm:gap-3 justify-start')} id="typing-indicator">
                 <Avatar className="h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0">
                   {personaAvatar && <AvatarImage src={personaAvatar.imageUrl} alt={persona.name} />}
                   <AvatarFallback><Bot/></AvatarFallback>
                 </Avatar>
-                <div className={cn('max-w-[80%] rounded-xl p-3 bg-secondary text-secondary-foreground')}>
-                    <div className="space-y-2">
-                        <Skeleton className="h-4 w-48 bg-background/50" />
-                        <Skeleton className="h-4 w-32 bg-background/50" />
+                <div className={cn('max-w-[80%] rounded-2xl p-3 bg-secondary text-secondary-foreground rounded-bl-none')}>
+                    <div className="flex gap-1.5 items-center">
+                        <span className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                        <span className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                        <span className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce"></span>
                     </div>
                 </div>
               </div>
           )}
 
           {lastMessageIsModel && !isLoading && !isTyping && (
-              <div className="flex justify-start pl-8 sm:pl-11">
-                  <div className="flex gap-2 mt-2 border rounded-full border-white/10 p-1">
+              <div className="flex justify-start pl-10 sm:pl-12">
+                  <div className="flex gap-1 mt-2 border rounded-full bg-background/50 p-0.5">
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopy(messages[messages.length-1].content)}>
                       <Copy className="h-4 w-4" />
                     </Button>
@@ -375,12 +385,10 @@ export default function ChatPage() {
       <footer className="sticky bottom-16 md:bottom-0 z-10 p-2 sm:p-4 border-t bg-background/80 backdrop-blur-sm">
         <div className="max-w-4xl mx-auto">
           <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(input); }}>
-            <div className="flex items-end gap-2">
-              <Button type="button" variant="ghost" size="icon" disabled={isLoading}><Mic/></Button>
-              <Button type="button" variant="ghost" size="icon" disabled={isLoading}><Paperclip/></Button>
+            <div className="relative flex items-end gap-2">
               <Textarea
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={handleTextareaChange}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -388,13 +396,18 @@ export default function ChatPage() {
                   }
                 }}
                 placeholder="তোমার নোংরা ইচ্ছাগুলো বলো..."
-                className="flex-1 resize-none min-h-[40px] max-h-36"
+                className="flex-1 resize-none rounded-2xl border-input bg-secondary px-4 py-2 pr-20"
                 rows={1}
                 disabled={isLoading}
+                style={{maxHeight: '120px'}}
               />
-              <Button type="submit" size="icon" className="ml-2" disabled={isLoading || !input.trim()}>
-                <Send />
-              </Button>
+              <div className="absolute right-2 bottom-1 flex items-center">
+                  <Button type="button" variant="ghost" size="icon" disabled={isLoading} className="h-8 w-8"><Mic/></Button>
+                  <Button type="button" variant="ghost" size="icon" disabled={isLoading} className="h-8 w-8"><Paperclip/></Button>
+                  <Button type="submit" size="icon" className="h-8 w-8 rounded-full" disabled={isLoading || !input.trim()}>
+                    <Send className="h-4 w-4"/>
+                  </Button>
+              </div>
             </div>
           </form>
         </div>
