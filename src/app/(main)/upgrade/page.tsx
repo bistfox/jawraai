@@ -3,22 +3,41 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/use-user';
-import { createPaymentCharge } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Check, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-const plans = [
+type Plan = {
+    name: 'Basic Monthly' | 'Pro Monthly' | 'Premium Monthly';
+    price: number;
+    priceSuffix: string;
+    description: string;
+    features: string[];
+    isPopular: boolean;
+};
+
+const plans: Plan[] = [
     {
-        name: 'Monthly Pro',
+        name: 'Basic Monthly',
         price: 500,
         priceSuffix: '/ month',
-        description: 'For power users who need unlimited access.',
+        description: 'Get started with unlimited messaging.',
         features: [
             'Unlimited Messages',
             'All AI Personas Unlocked',
+            'Standard Support'
+        ],
+        isPopular: false,
+    },
+    {
+        name: 'Pro Monthly',
+        price: 1000,
+        priceSuffix: '/ month',
+        description: 'For power users who want more models.',
+        features: [
+            'Everything in Basic',
             'Access to Free OpenRouter Models',
             'Add Your Own Custom AI Models',
             'Priority Support'
@@ -26,27 +45,14 @@ const plans = [
         isPopular: true,
     },
     {
-        name: 'Yearly Pro',
-        price: 5000,
-        priceSuffix: '/ year',
-        description: 'Save 2 months by paying annually.',
-        features: [
-            'Everything in Monthly Pro',
-            '2 Months Free (Save ৳1000)',
-            'Early access to new features',
-            'Highest priority support'
-        ],
-        isPopular: false,
-    },
-    {
-        name: 'Lifetime Magi',
-        price: 15000,
-        priceSuffix: ' one-time',
-        description: 'One payment, endless fun. Forever.',
+        name: 'Premium Monthly',
+        price: 2000,
+        priceSuffix: '/ month',
+        description: 'The ultimate experience with all features.',
          features: [
-            'Everything in Yearly Pro',
-            'Lifetime Pro Access',
-            'Exclusive Lifetime Member Badge',
+            'Everything in Pro',
+            'Early access to new features',
+            'Exclusive Member Badge',
             'Direct line to developers'
         ],
         isPopular: false,
@@ -60,22 +66,32 @@ export default function UpgradePage() {
     const [isLoading, setIsLoading] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
-    const handleUpgrade = async (plan: typeof plans[0]) => {
+    const handleUpgrade = async (plan: Plan) => {
         if (!user) {
             toast({ title: 'You must be logged in to upgrade.', variant: 'destructive' });
             return;
         }
         setIsLoading(true);
         setSelectedPlan(plan.name);
+
         try {
-            const paymentUrl = await createPaymentCharge(
-                {
-                    amount: plan.price,
-                    description: `Upgrade to ${plan.name} for ${user.username}`,
-                },
-                user
-            );
-            router.push(paymentUrl);
+            const response = await fetch('/api/payment/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ plan, user }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to create payment link.');
+            }
+
+            const { payment_url } = await response.json();
+            if (payment_url) {
+                router.push(payment_url);
+            } else {
+                throw new Error('Payment URL not found in response.');
+            }
         } catch (error: any) {
             toast({
                 title: 'Payment Error',

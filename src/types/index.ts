@@ -16,6 +16,8 @@ export interface User {
   lastMessageDate?: string;
   subscription?: 'free' | 'pro';
   customAIs?: CustomAI[];
+  subscriptionPlan?: 'Basic Monthly' | 'Pro Monthly' | 'Premium Monthly';
+  subscriptionExpiry?: Timestamp;
 }
 
 export interface Message {

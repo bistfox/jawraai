@@ -3,14 +3,29 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{userId} {
-      // Allow user to read and create their own profile
-      allow read, create: if request.auth != null && request.auth.uid == userId;
-      // Allow user to update their own profile
-      allow update, delete: if request.auth.uid == userId;
+      // Allow user to read their own profile
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      // Allow user to create their profile, but subscription must be 'free'
+      allow create: if request.auth.uid == userId 
+                    && request.resource.data.subscription == 'free';
+      
+      // Allow user to update their profile, but they cannot change their subscription status
+      // Only the admin backend can change subscription fields
+      allow update: if request.auth.uid == userId 
+                    && request.resource.data.subscription == resource.data.subscription;
+
+      // Allow user to delete their own profile
+      allow delete: if request.auth.uid == userId;
     }
 
     match /users/{userId}/chats/{chatId=**} {
       allow read, write: if request.auth.uid == userId;
+    }
+
+    // Only backend should access payment intents
+    match /payment_intents/{intentId} {
+      allow read, write: if false;
     }
 
     match /{document=**} {
