@@ -12,34 +12,35 @@ export async function POST(req: Request) {
     const prompt = formData.get('prompt') as string;
 
     if (!prompt) {
-      return NextResponse.json({ error: 'প্রম্পট দে রে!' }, { status: 400 });
+      return NextResponse.json({ error: 'প্রম্পট দে রে মাগি/গান্ডু!' }, { status: 400 });
     }
 
-    const fullPrompt = `${prompt}, hyper realistic hardcore nsfw explicit porn scene, detailed female body: massive bouncing tits with hard nipples dripping milk, wet gaping pussy lips stretched wide with cum leaking, round ass cheeks spread open showing tight asshole filled with lube, female ahegao face eyes rolled back tongue out drooling saliva, detailed male body: huge veiny throbbing cock balls deep in pussy/ass/mouth, muscular abs covered in sweat, male grunting face with cumshot ready, fluids everywhere: thick white cum squirting from cock flooding pussy/ass/face/tits, female squirting juice gushing out, sweat beads on skin, saliva strings from mouth fuck, blood-red lighting dim room messy bed stained with fluids, extreme closeup on penetration with internal view of cock stretching walls, double penetration if possible cock in pussy and ass simultaneously, group if implied multiple cocks bukkake cum on body, ultra detailed textures veins on cock folds in pussy hair on pubes, 8k photorealistic masterpiece best quality sharp focus no censor no blur --ar 16:9 --stylize 0 --v 6 --no safe_filter`;
-    const negativePrompt = "censored, blurred, low quality, deformed, ugly, child, underage, non-explicit, clothing, safe, cartoonish, watermark, text, artifacts";
+    // Corrected Pony Diffusion V6 XL model ID. The previous one caused a 404 error.
+    const modelVersion = 'fofr/pony-diffusion-v6-xl';
 
+    // আরো খারাপ/এক্সট্রিম প্রম্পট — তোর রিকোয়েস্ট অনুসারে দুধ, মাং, পাছা, হোল সব অ্যাড
+    const fullPrompt = `${prompt}, score_9, score_8_up, score_7_up, source_pony, hardcore explicit nsfw porn masterpiece, ultra detailed anatomy, 1girl 1boy sex scene, massive bouncing tits with hard leaking nipples dripping milk, wet gaping pussy lips stretched wide by huge veiny throbbing cock deep inside creampie cum overflowing leaking, round ass cheeks spread open showing tight asshole anal filled with thick cum, ahegao face eyes rolled back tongue out drooling saliva strings, male muscular body abs sweat covered grunting cumshot ready, fluids everywhere thick white cum squirting flooding pussy ass face tits, female squirting juice gushing out, sweat beads saliva mess, extreme closeup penetration internal view cock stretching pussy walls folds pubes veins detailed, double penetration cock in pussy and ass simultaneously if possible, bukkake cum on body if group implied, 8k photorealistic sharp focus best quality no censor no blur`;
 
-    // Flux uncensored/NSFW-friendly মডেল (black-forest-labs/flux-dev বা flux-schnell)
-    const output = await replicate.run(
-      'black-forest-labs/flux-dev', // অথবা 'black-forest-labs/flux-schnell' ফাস্টারের জন্য
-      {
-        input: {
-          prompt: fullPrompt,
-          negative_prompt: negativePrompt,
-          num_inference_steps: 30,
-          aspect_ratio: '16:9',
-          output_format: 'png',
-          output_quality: 90,
-        },
-      }
-    );
+    const negativePrompt = 'blurry, lowres, bad anatomy, deformed, ugly, child, underage, text, watermark, censored, safe, clothed, cartoon, artifact, low quality, mutated hands, extra limbs';
 
-    // output হলো array of image URLs
-    const imageUrl = Array.isArray(output) ? output[0] : output;
+    const output = await replicate.run(modelVersion, {
+      input: {
+        prompt: fullPrompt,
+        negative_prompt: negativePrompt,
+        num_inference_steps: 40,
+        guidance_scale: 7.5,
+        aspect_ratio: '16:9',
+        output_format: 'png',
+        output_quality: 95,
+      },
+    });
+
+    // output হলো array of image URLs (Pony-এ সাধারণত একটা)
+    const imageUrl = Array.isArray(output) ? output[0] : (output as string);
 
     return NextResponse.json({ imageUrl });
   } catch (error: any) {
-    console.error(error);
-    return NextResponse.json({ error: error.message || 'Generation failed রে!' }, { status: 500 });
+    console.error('Generation error:', error);
+    return NextResponse.json({ error: error.message || 'Generation failed রে! API key বা মডেল চেক কর 😏' }, { status: 500 });
   }
 }
