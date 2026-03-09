@@ -15,10 +15,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'প্রম্পট দে রে মাগি/গান্ডু!' }, { status: 400 });
     }
 
-    // Using a specific, version-locked model from Replicate to avoid 404 errors.
-    const modelVersion = 'kijiku/juggernaut-xl-v9:e49450a2f46252a1d227b328c31405b6378417d91e604f05b00c3a28c2e6b4ed';
+    // Using a more stable, popular, version-locked model from Replicate.
+    const modelVersion = 'sinkin.ai/realistic-vision-v6.0:719992f8b1b22e1150244670419356346df9b640a3311685324d540e1b655b3c';
 
-    // Updated prompt for Juggernaut XL
+    // This detailed prompt is generic enough for most photorealistic SDXL models.
     const fullPrompt = `photorealistic, masterpiece, best quality, ultra detailed, ${prompt}, hardcore explicit nsfw, 1girl 1boy sex scene, massive bouncing tits hard leaking nipples dripping milk cum, wet gaping pussy stretched wide by huge veiny throbbing cock deep creampie overflowing leaking cum, round ass spread tight asshole anal filled thick cum, ahegao face eyes rolled tongue out drooling saliva strings, male muscular sweat covered abs grunting cumshot, thick white cum squirting flooding pussy ass face tits, female squirting gushing juice, sweat saliva mess, extreme closeup penetration internal stretch cock walls folds pubes veins detailed, double penetration possible, bukkake if group, 8k sharp focus no censor no blur`;
 
     const negativePrompt = 'blurry, lowres, bad anatomy, deformed, ugly, child, underage, text, watermark, censored, safe, clothed, cartoon, artifact, low quality, mutated hands, extra limbs, score_6, score_5, score_4';
