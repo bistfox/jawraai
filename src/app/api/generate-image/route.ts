@@ -16,10 +16,10 @@ export async function POST(req: Request) {
     }
 
     // Using a working NSFW-friendly model from Replicate
-    const modelVersion = 'lucataco/flux-dev-lora';
+    const modelVersion = 'anotherjesse/juggernaut-xl-v9';
 
-    // আরো খারাপ + Pony-optimized প্রম্পট
-    const fullPrompt = `${prompt}, score_9, score_8_up, score_7_up, source_pony, masterpiece, best quality, ultra detailed, hardcore explicit nsfw porn, 1girl 1boy sex scene, massive bouncing tits hard leaking nipples dripping milk cum, wet gaping pussy stretched wide by huge veiny throbbing cock deep creampie overflowing leaking cum, round ass spread tight asshole anal filled thick cum, ahegao face eyes rolled tongue out drooling saliva strings, male muscular sweat covered abs grunting cumshot, thick white cum squirting flooding pussy ass face tits, female squirting gushing juice, sweat saliva mess, extreme closeup penetration internal stretch cock walls folds pubes veins detailed, double penetration possible, bukkake if group, 8k sharp focus no censor no blur`;
+    // Updated prompt for Juggernaut XL
+    const fullPrompt = `photorealistic, masterpiece, best quality, ultra detailed, ${prompt}, hardcore explicit nsfw, 1girl 1boy sex scene, massive bouncing tits hard leaking nipples dripping milk cum, wet gaping pussy stretched wide by huge veiny throbbing cock deep creampie overflowing leaking cum, round ass spread tight asshole anal filled thick cum, ahegao face eyes rolled tongue out drooling saliva strings, male muscular sweat covered abs grunting cumshot, thick white cum squirting flooding pussy ass face tits, female squirting gushing juice, sweat saliva mess, extreme closeup penetration internal stretch cock walls folds pubes veins detailed, double penetration possible, bukkake if group, 8k sharp focus no censor no blur`;
 
     const negativePrompt = 'blurry, lowres, bad anatomy, deformed, ugly, child, underage, text, watermark, censored, safe, clothed, cartoon, artifact, low quality, mutated hands, extra limbs, score_6, score_5, score_4';
 
@@ -27,11 +27,11 @@ export async function POST(req: Request) {
       input: {
         prompt: fullPrompt,
         negative_prompt: negativePrompt,
-        num_inference_steps: 40,
+        num_inference_steps: 25,
         guidance_scale: 7.5,
-        aspect_ratio: '16:9',
-        output_format: 'png',
-        output_quality: 95,
+        width: 1024,
+        height: 576,
+        output_format: 'png'
       },
     });
 
