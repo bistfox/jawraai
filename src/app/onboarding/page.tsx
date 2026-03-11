@@ -69,7 +69,6 @@ export default function OnboardingPage() {
             subscription: 'free',
             customAIs: [],
             messageCount: 0,
-            imageCount: 0,
         };
         await setDoc(doc(firestore, 'users', user.uid), userProfile);
         

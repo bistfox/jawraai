@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { Home, MessageSquare, PlusSquare, Settings, User as UserIcon, LogOut, Bot, Sparkles, Image } from 'lucide-react';
+import { Home, MessageSquare, PlusSquare, Settings, User as UserIcon, LogOut, Bot, Sparkles } from 'lucide-react';
 import {
   SidebarProvider,
   Sidebar,
@@ -94,11 +94,6 @@ export default function MainAppLayout({
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname.startsWith('/chat')} tooltip={{children: 'Chat History'}}>
                 <Link href="/chat/history"><MessageSquare /><span>Chat History</span></Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === '/image-gen'} tooltip={{ children: 'Image Generator' }}>
-                <Link href="/image-gen"><Image /><span>Image Gen</span></Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
             {user.subscription === 'pro' && (
