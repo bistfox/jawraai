@@ -4,8 +4,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function isAdmin() {
-      // Allow access if the user has an 'admin' or 'superadmin' custom claim
-      return request.auth.token.role == 'admin' || request.auth.token.role == 'superadmin';
+      // Grant admin access if the user's verified email is the admin email.
+      return request.auth.token.email_verified && request.auth.token.email == 'lofeelzone@gmail.com';
     }
 
     match /users/{userId} {
