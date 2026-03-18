@@ -2,6 +2,12 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function isAdmin() {
+      // Allow access if the user has an 'admin' or 'superadmin' custom claim
+      return request.auth.token.role == 'admin' || request.auth.token.role == 'superadmin';
+    }
+
     match /users/{userId} {
       // Allow user to read their own profile
       allow read: if request.auth != null && request.auth.uid == userId;
@@ -11,9 +17,9 @@ service cloud.firestore {
                     && request.resource.data.subscription == 'free';
       
       // Allow user to update their profile, but they cannot change their subscription status
-      // Only the admin backend can change subscription fields
-      allow update: if request.auth.uid == userId 
-                    && request.resource.data.subscription == resource.data.subscription;
+      // Admins can update any user's profile
+      allow update: if (request.auth.uid == userId 
+                    && request.resource.data.subscription == resource.data.subscription) || isAdmin();
 
       // Allow user to delete their own profile
       allow delete: if request.auth.uid == userId;
@@ -27,16 +33,11 @@ service cloud.firestore {
       // User can create their own subscription request
       allow create: if request.auth.uid == request.resource.data.userId;
       
-      // User can read their own requests to check status
-      allow read: if request.auth.uid == resource.data.userId;
+      // User can read their own requests to check status, admins can read all
+      allow read: if request.auth.uid == resource.data.userId || isAdmin();
 
-      // Admins will be granted access later
-      allow update, delete, list: if false;
-    }
-
-    // Only backend should access payment intents
-    match /payment_intents/{intentId} {
-      allow read, write: if false;
+      // Admins can list, update, and delete requests
+      allow list, update, delete: if isAdmin();
     }
 
     match /{document=**} {
