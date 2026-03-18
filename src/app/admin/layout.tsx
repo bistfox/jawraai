@@ -46,10 +46,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode; }
     const { user, isLoading } = useUser();
     const auth = getAuth();
     
-    // For now, we only check for a logged in user.
-    // In future, we will check for admin custom claims.
     useEffect(() => {
-        if (!isLoading && !user && pathname !== '/admin/login') {
+        if (isLoading) return;
+        if (!user && pathname !== '/admin/login') {
+            router.replace('/admin/login');
+            return;
+        }
+        if (user && user.email !== 'lofeelzone@gmail.com' && pathname !== '/admin/login') {
             router.replace('/admin/login');
         }
     }, [user, isLoading, router, pathname]);
@@ -97,7 +100,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode; }
                     </SidebarMenuItem>
                      <SidebarMenuItem>
                       <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/users')} tooltip={{children: 'Users'}}>
-                        <Link href="#"><Users /><span>Users</span></Link>
+                        <Link href="/admin/users"><Users /><span>Users</span></Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>

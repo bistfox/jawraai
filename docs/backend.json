@@ -58,11 +58,16 @@
         },
         "subscriptionStatus": {
           "type": "string",
-          "enum": ["active", "inactive"]
+          "enum": ["active", "inactive", "banned"]
         },
         "subscriptionStart": {
             "type": "string",
             "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the user profile was created."
         }
       },
       "required": ["username", "age", "gender"]

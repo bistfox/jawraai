@@ -9,8 +9,11 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      // Allow user to read their own profile
-      allow read: if request.auth != null && request.auth.uid == userId;
+      // Admins can list and read all user profiles
+      allow list, read: if isAdmin();
+      
+      // Allow user to read/delete their own profile
+      allow read, delete: if request.auth.uid == userId;
 
       // Allow user to create their profile, but subscription must be 'free'
       allow create: if request.auth.uid == userId 
@@ -20,9 +23,6 @@ service cloud.firestore {
       // Admins can update any user's profile
       allow update: if (request.auth.uid == userId 
                     && request.resource.data.subscription == resource.data.subscription) || isAdmin();
-
-      // Allow user to delete their own profile
-      allow delete: if request.auth.uid == userId;
     }
 
     match /users/{userId}/chats/{chatId=**} {

@@ -14,7 +14,7 @@ import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import { User, UserRound } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 
 const onboardingSchema = z.object({
@@ -69,6 +69,7 @@ export default function OnboardingPage() {
             subscription: 'free',
             customAIs: [],
             messageCount: 0,
+            createdAt: serverTimestamp(),
         };
         await setDoc(doc(firestore, 'users', user.uid), userProfile);
         

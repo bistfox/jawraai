@@ -8,6 +8,7 @@ export interface CustomAI {
 
 export interface User {
   uid: string;
+  id?: string;
   email?: string | null;
   username?: string;
   age?: number;
@@ -18,8 +19,9 @@ export interface User {
   customAIs?: CustomAI[];
   subscriptionPlan?: 'Basic Monthly' | 'Pro Monthly' | 'Premium Monthly';
   subscriptionExpiry?: Timestamp;
-  subscriptionStatus?: 'active' | 'inactive';
+  subscriptionStatus?: 'active' | 'inactive' | 'banned';
   subscriptionStart?: Timestamp;
+  createdAt?: Timestamp;
 }
 
 export interface Message {
