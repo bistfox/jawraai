@@ -10,7 +10,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import type { SubscriptionRequest } from '@/types';
 
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
