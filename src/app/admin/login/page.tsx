@@ -8,31 +8,49 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Bot } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { useFirebaseApp } from '@/firebase';
 
 export default function AdminLoginPage() {
     const router = useRouter();
     const { toast } = useToast();
+    const app = useFirebaseApp();
+    const auth = getAuth(app);
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleAdminLogin = (e: React.FormEvent) => {
+    const handleAdminLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
 
         const ADMIN_EMAIL = 'lofeelzone@gmail.com';
-        const ADMIN_PASSWORD = 'jawraaiadmin'; // A simple hardcoded password for now
 
-        if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-            toast({ title: "Welcome Admin!", description: "Redirecting to dashboard..." });
-            // In a real app, you'd set a session cookie here
-            router.push('/admin/dashboard');
-        } else {
-            toast({
-                title: "Login Failed",
-                description: "Invalid email or password.",
-                variant: "destructive",
-            });
+        try {
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+
+            if (user.email === ADMIN_EMAIL) {
+                toast({ title: "Welcome Admin!", description: "Redirecting to dashboard..." });
+                router.push('/admin/dashboard');
+            } else {
+                await auth.signOut(); // Sign out non-admin user
+                toast({
+                    title: "Access Denied",
+                    description: "You do not have permission to access the admin panel.",
+                    variant: "destructive",
+                });
+                setIsLoading(false);
+            }
+        } catch (error: any) {
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                toast({ title: 'Login Failed', description: 'Invalid email or password.', variant: 'destructive' });
+            } else if (error.code === 'auth/too-many-requests') {
+                 toast({ title: 'Login Failed', description: 'Access to this account has been temporarily disabled due to many failed login attempts. You can immediately restore it by resetting your password or you can try again later.', variant: 'destructive' });
+            } else {
+                toast({ title: 'Login Error', description: error.message, variant: 'destructive' });
+            }
             setIsLoading(false);
         }
     };
