@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useUser } from '@/lib/hooks/use-user';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Check, Sparkles } from 'lucide-react';
+import { Check, Sparkles, Copy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import {
@@ -133,7 +133,7 @@ export default function UpgradePage() {
     };
     
     const persona = user?.gender === 'Male' ? 'Magi Bot' : 'Jawra Bot';
-    const paymentNumber = '01700000000';
+    const paymentNumber = '01707495559';
 
     return (
         <>
@@ -200,8 +200,20 @@ export default function UpgradePage() {
                         <div className="space-y-2 text-sm rounded-lg border p-4">
                             <p className="font-bold">Step 1: Send Payment</p>
                             <p>Send <strong>৳{selectedPlan?.price}</strong> to the bKash/Nagad number below.</p>
-                            <div className="flex items-center justify-center p-3 my-2 rounded-md bg-secondary">
+                            <div className="flex items-center justify-between p-3 my-2 rounded-md bg-secondary">
                                 <p className="text-lg font-mono font-bold tracking-widest">{paymentNumber}</p>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(paymentNumber);
+                                        toast({ title: "Number Copied!" });
+                                    }}
+                                >
+                                    <Copy className="h-4 w-4" />
+                                </Button>
                             </div>
                              <p className="text-xs text-muted-foreground">Please use the 'Send Money' option.</p>
                         </div>
