@@ -22,6 +22,17 @@ service cloud.firestore {
     match /users/{userId}/chats/{chatId=**} {
       allow read, write: if request.auth.uid == userId;
     }
+    
+    match /subscription_requests/{requestId} {
+      // User can create their own subscription request
+      allow create: if request.auth.uid == request.resource.data.userId;
+      
+      // User can read their own requests to check status
+      allow read: if request.auth.uid == resource.data.userId;
+
+      // Admins will be granted access later
+      allow update, delete, list: if false;
+    }
 
     // Only backend should access payment intents
     match /payment_intents/{intentId} {

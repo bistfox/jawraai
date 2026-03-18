@@ -35,3 +35,17 @@ export interface ChatSession {
   createdAt: Timestamp;
   userId: string;
 }
+
+export interface SubscriptionRequest {
+  id: string; // The firestore document id
+  userId: string;
+  username?: string;
+  email?: string;
+  requestedPlan: 'Basic Monthly' | 'Pro Monthly' | 'Premium Monthly';
+  planPrice: number;
+  paymentPhoneNumber: string;
+  transactionId: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: Timestamp;
+  adminNotes?: string;
+}

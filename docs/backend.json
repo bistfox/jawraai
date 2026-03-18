@@ -47,6 +47,22 @@
             },
             "required": ["provider", "apiKey", "nickname"]
           }
+        },
+        "subscriptionPlan": {
+          "type": "string",
+          "enum": ["Basic Monthly", "Pro Monthly", "Premium Monthly"]
+        },
+        "subscriptionExpiry": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "subscriptionStatus": {
+          "type": "string",
+          "enum": ["active", "inactive"]
+        },
+        "subscriptionStart": {
+            "type": "string",
+            "format": "date-time"
         }
       },
       "required": ["username", "age", "gender"]
@@ -93,6 +109,58 @@
         }
       },
       "required": ["role", "content", "createdAt"]
+    },
+    "SubscriptionRequest": {
+      "title": "Subscription Request",
+      "description": "Stores a user's manual payment submission for a subscription upgrade.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user requesting the subscription."
+        },
+        "username": {
+          "type": "string",
+          "description": "The username of the user."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The email of the user."
+        },
+        "requestedPlan": {
+          "type": "string",
+          "enum": ["Basic Monthly", "Pro Monthly", "Premium Monthly"],
+          "description": "The plan the user is requesting."
+        },
+        "planPrice": {
+            "type": "number",
+            "description": "The price of the requested plan."
+        },
+        "paymentPhoneNumber": {
+          "type": "string",
+          "description": "The phone number from which the payment was sent."
+        },
+        "transactionId": {
+          "type": "string",
+          "description": "The transaction ID of the payment."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "approved", "rejected"],
+          "description": "The status of the request."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the request was created."
+        },
+        "adminNotes": {
+          "type": "string",
+          "description": "Notes from the admin who reviewed the request."
+        }
+      },
+      "required": ["userId", "username", "requestedPlan", "planPrice", "paymentPhoneNumber", "transactionId", "status", "createdAt"]
     }
   },
   "auth": {
@@ -110,6 +178,10 @@
     "/users/{userId}/chats/{chatId}/messages/{messageId}": {
       "schema": { "$ref": "#/entities/ChatMessage" },
       "description": "Stores all messages for a specific chat session."
+    },
+    "/subscription_requests/{requestId}": {
+      "schema": { "$ref": "#/entities/SubscriptionRequest" },
+      "description": "Stores user subscription requests for manual admin verification."
     }
   }
 }

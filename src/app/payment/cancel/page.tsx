@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { TriangleAlert } from 'lucide-react';
+import { XCircle } from 'lucide-react';
 
 export default function PaymentCancelPage() {
     return (
@@ -9,16 +9,16 @@ export default function PaymentCancelPage() {
             <Card className="w-full max-w-md text-center">
                 <CardHeader>
                     <div className="mx-auto w-fit mb-4">
-                        <TriangleAlert className="h-12 w-12 text-amber-500" />
+                        <XCircle className="h-12 w-12 text-destructive" />
                     </div>
-                    <CardTitle className="text-2xl font-bold">Payment Cancelled</CardTitle>
+                    <CardTitle className="text-2xl font-bold">Page Not Found</CardTitle>
                     <CardDescription>
-                        Your payment process was cancelled. Your subscription has not been changed.
+                        This page is no longer in use.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Button asChild>
-                        <Link href="/upgrade">Try Again</Link>
+                        <Link href="/dashboard">Go to Dashboard</Link>
                     </Button>
                 </CardContent>
             </Card>
