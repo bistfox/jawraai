@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,9 +12,13 @@ import { Users, FileText, Loader2 } from 'lucide-react';
 
 export default function AdminDashboardPage() {
   const firestore = useFirestore();
-  const { data: pendingRequests, isLoading } = useCollection<SubscriptionRequest>(
-    query(collection(firestore, 'subscription_requests'), where('status', '==', 'pending'))
+  
+  const pendingRequestsQuery = React.useMemo(() => 
+    query(collection(firestore, 'subscription_requests'), where('status', '==', 'pending')),
+    [firestore]
   );
+  
+  const { data: pendingRequests, isLoading } = useCollection<SubscriptionRequest>(pendingRequestsQuery);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
