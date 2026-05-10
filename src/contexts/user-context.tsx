@@ -35,6 +35,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
             setUser({
                 uid: firebaseUser.uid,
                 email: firebaseUser.email,
+                emailVerified: firebaseUser.emailVerified,
                 ...userProfile,
             } as User);
         } else {
@@ -42,6 +43,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
             setUser({
                 uid: firebaseUser.uid,
                 email: firebaseUser.email,
+                emailVerified: firebaseUser.emailVerified,
             } as User);
         }
     } else {

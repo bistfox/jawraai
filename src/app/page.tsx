@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -10,6 +11,8 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
+  sendEmailVerification,
+  sendPasswordResetEmail,
   signInWithPhoneNumber,
   RecaptchaVerifier,
 } from 'firebase/auth';
@@ -22,6 +25,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 const emailSchema = z.object({
   email: z.string().email('দয়া করে একটি বৈধ ইমেল ঠিকানা লিখুন।'),
@@ -54,6 +58,7 @@ function JawraLogo() {
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const app = useFirebaseApp();
   const auth = getAuth(app);
@@ -62,6 +67,16 @@ export default function LoginPage() {
   const [tab, setTab] = useState('email');
   const [authMode, setAuthMode] = useState<'signup' | 'login'>('signup');
   const [otpSent, setOtpSent] = useState(false);
+
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (!ref) return;
+    try {
+      localStorage.setItem('pendingReferralCode', ref.trim().toUpperCase());
+    } catch {
+      // ignore localStorage failures
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const recaptchaContainer = document.getElementById('recaptcha-container');
@@ -102,9 +117,10 @@ export default function LoginPage() {
   const handleSignUp = async (values: z.infer<typeof emailSchema>) => {
     setIsLoading(true);
     try {
-        await createUserWithEmailAndPassword(auth, values.email, values.password);
-        toast({ title: 'অ্যাকাউন্ট তৈরি সফল হয়েছে!', description: 'আপনার প্রোফাইলটি সম্পূর্ণ করুন।' });
-        router.push('/onboarding');
+        const cred = await createUserWithEmailAndPassword(auth, values.email, values.password);
+        await sendEmailVerification(cred.user);
+        toast({ title: 'অ্যাকাউন্ট তৈরি সফল হয়েছে!', description: 'ইমেইল ভেরিফাই করুন, তারপর প্রোফাইল সেটআপ করুন।' });
+        router.push('/verify-email');
     } catch (error: any) {
         if (error.code === 'auth/email-already-in-use') {
             toast({ title: 'ত্রুটি', description: 'এই ইমেইল দিয়ে ইতিমধ্যে একটি অ্যাকাউন্ট আছে। দয়া করে লগইন করুন।', variant: 'destructive' });
@@ -118,9 +134,14 @@ export default function LoginPage() {
   const handleSignIn = async (values: z.infer<typeof emailSchema>) => {
       setIsLoading(true);
       try {
-          await signInWithEmailAndPassword(auth, values.email, values.password);
-          toast({ title: 'স্বাগতম!' });
-          router.push('/dashboard');
+          const cred = await signInWithEmailAndPassword(auth, values.email, values.password);
+          if (cred.user.email && !cred.user.emailVerified) {
+            toast({ title: 'ইমেইল ভেরিফাই করুন', description: 'আপনার ইনবক্সে ভেরিফিকেশন লিংক পাঠানো হয়েছে।' });
+            router.push('/verify-email');
+          } else {
+            toast({ title: 'স্বাগতম!' });
+            router.push('/dashboard');
+          }
       } catch (error: any) {
            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
               toast({ title: 'লগইন ত্রুটি', description: 'ভুল ইমেইল অথবা পাসওয়ার্ড।', variant: 'destructive' });
@@ -231,6 +252,11 @@ export default function LoginPage() {
                                 <Button type="submit" className="w-full" disabled={isLoading}>{isLoading ? 'প্রসেসিং...' : 'লগইন করুন'}</Button>
                             </form>
                         </Form>
+                        <div className="mt-3 text-center">
+                          <Link href="/forgot-password" className="text-sm underline font-semibold text-primary hover:text-primary/80">
+                            পাসওয়ার্ড ভুলে গেছেন?
+                          </Link>
+                        </div>
                         <p className="mt-6 text-center text-sm text-muted-foreground">
                             অ্যাকাউন্ট নেই?{' '}
                             <button onClick={() => { setAuthMode('signup'); emailForm.reset(); }} className="underline font-semibold text-primary hover:text-primary/80">

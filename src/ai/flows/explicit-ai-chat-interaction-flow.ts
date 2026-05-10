@@ -9,7 +9,17 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { getJawraAISystemPrompt } from '../prompts';
+import { getPersonaSystemPrompt } from '../prompts';
+
+function isRetryableGeminiError(error: any) {
+  const code = error?.code ?? error?.cause?.code;
+  const status = error?.status ?? error?.cause?.status;
+  return status === 'UNAVAILABLE' || code === 503;
+}
+
+async function delay(ms: number) {
+  await new Promise((r) => setTimeout(r, ms));
+}
 
 const ExplicitAIChatInteractionInputSchema = z.object({
   message: z.string().describe("The user's chat message."),
@@ -33,24 +43,45 @@ const explicitAIChatInteractionFlow = ai.defineFlow(
     outputSchema: ExplicitAIChatInteractionOutputSchema,
   },
   async (input) => {
-    const systemPrompt = getJawraAISystemPrompt(input.userGender);
+    const persona = input.userGender === 'Male' ? 'magi' : 'jawra';
+    const systemPrompt = getPersonaSystemPrompt(persona);
 
-    const llmResponse = await ai.generate({
-      model: 'googleai/gemini-2.5-flash',
-      system: systemPrompt,
-      prompt: input.message,
-      config: {
-        temperature: 0.95,
-        safetySettings: [
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' },
-        ],
-      },
-    });
+    const models = [
+      'googleai/gemini-2.5-flash',
+      'googleai/gemini-2.0-flash',
+      'googleai/gemini-1.5-flash',
+    ] as const;
 
-    return { response: llmResponse.text };
+    let lastError: any = null;
+    for (let i = 0; i < models.length; i++) {
+      try {
+        const llmResponse = await ai.generate({
+          model: models[i],
+          system: systemPrompt,
+          prompt: input.message,
+          config: {
+            temperature: 0.95,
+            safetySettings: [
+              { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+              { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+              { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+              { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+              { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' },
+            ],
+          },
+        });
+
+        return { response: llmResponse.text };
+      } catch (e: any) {
+        lastError = e;
+        if (isRetryableGeminiError(e) && i < models.length - 1) {
+          await delay(300 + i * 400);
+          continue;
+        }
+        throw e;
+      }
+    }
+
+    throw lastError ?? new Error('Failed to generate AI response.');
   }
 );

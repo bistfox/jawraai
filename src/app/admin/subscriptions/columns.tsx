@@ -230,8 +230,24 @@ export const columns: ColumnDef<SubscriptionRequest>[] = [
     },
   },
   {
+    accessorKey: 'paymentMethod',
+    header: 'Method',
+    cell: ({ row }) => {
+      const method = (row.getValue('paymentMethod') as string | undefined) ?? 'N/A';
+      return <Badge variant="outline" className="uppercase">{method}</Badge>;
+    },
+  },
+  {
     accessorKey: 'paymentPhoneNumber',
     header: 'Payment Phone',
+  },
+  {
+    accessorKey: 'paymentToPhoneNumber',
+    header: 'Send To',
+    cell: ({ row }) => {
+      const val = row.getValue('paymentToPhoneNumber') as string | undefined;
+      return <span className="font-mono">{val ?? 'N/A'}</span>;
+    },
   },
   {
     accessorKey: 'transactionId',

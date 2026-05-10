@@ -4,8 +4,13 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function isAdmin() {
-      // Grant admin access if the user's verified email is the admin email.
-      return request.auth.token.email_verified && request.auth.token.email == 'lofeelzone@gmail.com';
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    match /admins/{adminId} {
+      allow read: if request.auth != null && request.auth.uid == adminId;
+      allow list, create, update, delete: if false;
     }
 
     match /users/{userId} {
@@ -19,25 +24,77 @@ service cloud.firestore {
       allow create: if request.auth.uid == userId 
                     && request.resource.data.subscription == 'free';
       
-      // Allow user to update their profile, but they cannot change their subscription status
-      // Admins can update any user's profile
-      allow update: if (request.auth.uid == userId 
-                    && request.resource.data.subscription == resource.data.subscription) || isAdmin();
+      // Allow user to update their profile.
+      // - Users cannot arbitrarily change subscription.
+      // - They can cancel their subscription (set it to free/inactive) but cannot upgrade from here.
+      allow update: if (
+                    (request.auth.uid == userId
+                      && request.resource.data.subscription == resource.data.subscription)
+                    ||
+                    (request.auth.uid == userId
+                      && request.resource.data.subscription == 'free'
+                      && request.resource.data.subscriptionStatus == 'inactive')
+                    ||
+                    isAdmin()
+                  );
     }
 
     match /users/{userId}/chats/{chatId=**} {
       allow read, write: if request.auth.uid == userId;
     }
+
+    match /users/{userId}/character_sessions/{sessionId} {
+      allow read, write: if request.auth.uid == userId;
+    }
+
+    match /users/{userId}/character_sessions/{sessionId}/messages/{messageId} {
+      allow read, write: if request.auth.uid == userId;
+    }
+
+    match /users/{userId}/character_sessions/{sessionId}/memory/{memoryId} {
+      allow read, write: if request.auth.uid == userId;
+    }
+
+    match /characters/{characterId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if request.auth != null
+                    && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow list: if request.auth != null;
+    }
     
     match /subscription_requests/{requestId} {
-      // User can create their own subscription request
-      allow create: if request.auth.uid == request.resource.data.userId;
+      // Basic shape validation for manual payment requests
+      allow create: if request.auth.uid == request.resource.data.userId
+                    && request.resource.data.paymentMethod in ['bkash', 'nagad', 'rocket']
+                    && request.resource.data.status == 'pending';
       
       // User can read their own requests to check status, admins can read all
       allow read: if request.auth.uid == resource.data.userId || isAdmin();
 
       // Admins can list, update, and delete requests
       allow list, update, delete: if isAdmin();
+    }
+
+    match /users/{userId}/images/{imageId} {
+      allow read, write: if request.auth.uid == userId;
+    }
+
+    match /announcements/{announcementId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdmin();
+      allow list: if request.auth != null;
+    }
+
+    match /referrals/{referralId} {
+      allow read: if request.auth != null
+                  && (resource.data.referrerUid == request.auth.uid
+                      || resource.data.referredUid == request.auth.uid
+                      || isAdmin());
+      allow create: if request.auth != null;
+      allow update, delete: if isAdmin();
+      allow list: if request.auth != null;
     }
 
     match /{document=**} {

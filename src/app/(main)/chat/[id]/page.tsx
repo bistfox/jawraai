@@ -4,9 +4,9 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Send, Copy, RefreshCw, Share2, Mic, Paperclip, Bot } from 'lucide-react';
+import { Send, Copy, RefreshCw, Share2, Mic, Paperclip, Bot, Brain, Pin, Trash2, Pencil } from 'lucide-react';
 import { useUser } from '@/lib/hooks/use-user';
-import { getAiResponse, regenerateAiResponse } from '@/lib/actions';
+import { getAiResponse, regenerateAiResponse, type AiReply } from '@/lib/actions';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import type { Message, User } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -27,8 +27,13 @@ import {
   doc,
   setDoc,
   getDoc,
-  updateDoc
+  updateDoc,
+  deleteDoc
 } from 'firebase/firestore';
+import type { Character, CharacterSession } from '@/types';
+import type { MemoryItem } from '@/types';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Input } from '@/components/ui/input';
 
 const MALE_LIMIT_MESSAGES = [
     "আ মাদারচোদ {username}, তোর লিমিট শেষ রে খাঙ্কির বেটা! 🔥 তোর এলাকায় এসে তোর মায়েরে চুদবো যদি আবার মেসেজ পাঠাস! [Upgrade to Magi Bot Pro](/upgrade) করলে unlimited + ফ্রি OpenRouter models পাবি 😈",
@@ -87,6 +92,7 @@ export default function ChatPage() {
   const { user } = useUser();
   const searchParams = useSearchParams();
   const initialPrompt = searchParams.get('prompt');
+  const chatMode = searchParams.get('mode');
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const initialPromptHandled = useRef(false);
@@ -96,20 +102,99 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [textareaHeight, setTextareaHeight] = useState('auto');
+  const [usage, setUsage] = useState<{ used: number; limit: number; resetDate: string } | null>(null);
+  const [isCharacterSession, setIsCharacterSession] = useState(false);
+  const [character, setCharacter] = useState<Character | null>(null);
+  const [relationshipLevel, setRelationshipLevel] = useState<string | null>(null);
+  const [affinityXp, setAffinityXp] = useState<number>(0);
+  const [memoryText, setMemoryText] = useState('');
+  const [editingMemory, setEditingMemory] = useState<MemoryItem | null>(null);
 
-  const persona = user?.gender === 'Male' 
-    ? { name: 'Khangi AI', avatarId: 'khangi-ai-avatar' }
-    : { name: 'Jawra AI', avatarId: 'jawra-ai-avatar' };
+  const persona = isCharacterSession && character
+    ? { name: character.name, avatarId: 'jawra-ai-avatar' }
+    : user?.gender === 'Male'
+      ? { name: 'Khangi AI', avatarId: 'khangi-ai-avatar' }
+      : { name: 'Jawra AI', avatarId: 'jawra-ai-avatar' };
   
   const personaAvatar = PlaceHolderImages.find(p => p.id === persona.avatarId);
 
+  // Detect if this chatId is a character session.
+  useEffect(() => {
+    const run = async () => {
+      if (!user || !chatId) return;
+      if (chatMode === 'character') {
+        setIsCharacterSession(true);
+        return;
+      }
+      try {
+        const sessionRef = doc(firestore, 'users', user.uid, 'character_sessions', chatId);
+        const snap = await getDoc(sessionRef);
+        setIsCharacterSession(snap.exists());
+      } catch {
+        setIsCharacterSession(false);
+      }
+    };
+    run();
+  }, [chatId, chatMode, firestore, user]);
+
+  // Load character for character sessions.
+  useEffect(() => {
+    const run = async () => {
+      if (!user || !chatId || !isCharacterSession) return;
+      try {
+        const sessionRef = doc(firestore, 'users', user.uid, 'character_sessions', chatId);
+        const sessionSnap = await getDoc(sessionRef);
+        if (!sessionSnap.exists()) return;
+        const session = { id: sessionSnap.id, ...(sessionSnap.data() as any) } as CharacterSession;
+        setRelationshipLevel(session.relationshipLevel);
+        setAffinityXp(session.affinityXp ?? 0);
+        const charRef = doc(firestore, 'characters', session.characterId);
+        const charSnap = await getDoc(charRef);
+        if (charSnap.exists()) {
+          setCharacter({ id: charSnap.id, ...(charSnap.data() as any) } as Character);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    run();
+  }, [chatId, firestore, isCharacterSession, user]);
+
+  const memoryQuery = useMemo(() => {
+    if (!user || !chatId || !isCharacterSession) return null;
+    return query(collection(firestore, 'users', user.uid, 'character_sessions', chatId, 'memory'));
+  }, [firestore, isCharacterSession, user, chatId]);
+
+  const { data: memoryItems } = useCollection<MemoryItem>(memoryQuery);
+
+  const sortedMemory = useMemo(() => {
+    if (!memoryItems) return [];
+    return [...memoryItems].sort((a, b) => {
+      const ap = a.isPinned ? 1 : 0;
+      const bp = b.isPinned ? 1 : 0;
+      if (ap !== bp) return bp - ap;
+      const aSec = (a.updatedAt as any)?.seconds ?? (a.createdAt as any)?.seconds ?? 0;
+      const bSec = (b.updatedAt as any)?.seconds ?? (b.createdAt as any)?.seconds ?? 0;
+      return bSec - aSec;
+    });
+  }, [memoryItems]);
+
+  const deriveRelationshipLevel = (xp: number) => {
+    if (xp >= 250) return 'Soulmate';
+    if (xp >= 160) return 'Partner';
+    if (xp >= 100) return 'Best Friend';
+    if (xp >= 60) return 'Close Friend';
+    if (xp >= 25) return 'Friend';
+    return 'Stranger';
+  };
+
   const messagesQuery = useMemo(() => {
     if (!user || !chatId) return null;
-    return query(
-      collection(firestore, 'users', user.uid, 'chats', chatId, 'messages'),
-      orderBy('createdAt', 'asc')
-    );
-  }, [user, chatId, firestore]);
+    const base = isCharacterSession
+      ? collection(firestore, 'users', user.uid, 'character_sessions', chatId, 'messages')
+      : collection(firestore, 'users', user.uid, 'chats', chatId, 'messages');
+    return query(base, orderBy('createdAt', 'asc'));
+  }, [firestore, isCharacterSession, user, chatId]);
 
   const { data: messages, isLoading: isLoadingMessages } = useCollection<Message>(messagesQuery);
   
@@ -129,7 +214,9 @@ export default function ChatPage() {
     setInput('');
     setIsLoading(true);
 
-    const messagesCollection = collection(firestore, 'users', user.uid, 'chats', chatId, 'messages');
+    const messagesCollection = isCharacterSession
+      ? collection(firestore, 'users', user.uid, 'character_sessions', chatId, 'messages')
+      : collection(firestore, 'users', user.uid, 'chats', chatId, 'messages');
     
     await addDoc(messagesCollection, {
       role: 'user',
@@ -139,44 +226,46 @@ export default function ChatPage() {
     
     setIsTyping(true);
 
-    const userDocRef = doc(firestore, 'users', user.uid);
     try {
-        const userDoc = await getDoc(userDocRef);
-        const userData = userDoc.data() as User;
-        const isPro = userData.subscription === 'pro';
+        const isPro = user.subscription === 'pro' || !!user.planId;
+        const preferredProvider = isPro ? user.preferredChatProvider : undefined;
+        const openRouterModelId = isPro
+          ? user.openRouterSelectedModelId || 'z-ai/glm-4.5-air:free'
+          : undefined;
+        const groqModelId = isPro
+          ? user.groqSelectedModelId || 'llama-3.3-70b-versatile'
+          : undefined;
 
-        if (!isPro) {
-            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-            const lastDate = userData.lastMessageDate;
-            const currentCount = (lastDate === today && userData.messageCount) ? userData.messageCount : 0;
-            
-            if (currentCount >= 7) {
-                const limitMessages = user.gender === 'Male' ? MALE_LIMIT_MESSAGES : FEMALE_LIMIT_MESSAGES;
-                const randomMessage = limitMessages[Math.floor(Math.random() * limitMessages.length)];
-                const personalizedMessage = randomMessage.replace('{username}', user.username || 'LoFeel');
-                
-                await addDoc(messagesCollection, {
-                    role: 'model',
-                    content: personalizedMessage,
-                    createdAt: serverTimestamp(),
-                });
-                setIsTyping(false);
-                setIsLoading(false);
-                return; 
-            }
-
-            await updateDoc(userDocRef, {
-                messageCount: currentCount + 1,
-                lastMessageDate: today,
-            });
-        }
-
-        const aiResponse = await getAiResponse(userMessageContent, user.gender);
+        const extraSystemPrompt = character?.systemPrompt || character?.greeting || undefined;
+        const aiReply: AiReply = await getAiResponse(
+          user.uid,
+          userMessageContent,
+          user.gender,
+          openRouterModelId,
+          groqModelId,
+          preferredProvider,
+          extraSystemPrompt,
+          isCharacterSession ? chatId : undefined
+        );
+        setUsage(aiReply.usage);
         await addDoc(messagesCollection, {
           role: 'model',
-          content: aiResponse,
+          content: aiReply.text,
           createdAt: serverTimestamp(),
         });
+
+        if (isCharacterSession) {
+          const nextXp = (affinityXp ?? 0) + 1;
+          const nextLevel = deriveRelationshipLevel(nextXp);
+          setAffinityXp(nextXp);
+          setRelationshipLevel(nextLevel);
+          const sessionRef = doc(firestore, 'users', user.uid, 'character_sessions', chatId);
+          await updateDoc(sessionRef, {
+            affinityXp: nextXp,
+            relationshipLevel: nextLevel,
+            lastActiveAt: serverTimestamp(),
+          });
+        }
 
     } catch (error) {
       console.error("Failed to process message:", error);
@@ -237,14 +326,35 @@ export default function ChatPage() {
     }
 
     const history = messages.slice(0, lastModelMessageIndex);
+    const historyPlain = history.map(({ role, content }) => ({ role, content }));
     
     setIsLoading(true);
     setIsTyping(true);
 
     try {
-      const newResponse = await regenerateAiResponse(history, user.gender);
-      const messageDocRef = doc(firestore, 'users', user.uid, 'chats', chatId, 'messages', lastModelMessage.id);
-      await updateDoc(messageDocRef, { content: newResponse });
+      const preferredProvider = user.subscription === 'pro' ? user.preferredChatProvider : undefined;
+      const openRouterModelId = user.subscription === 'pro'
+        ? user.openRouterSelectedModelId || 'z-ai/glm-4.5-air:free'
+        : undefined;
+      const groqModelId = user.subscription === 'pro'
+        ? user.groqSelectedModelId || 'llama-3.3-70b-versatile'
+        : undefined;
+      const extraSystemPrompt = character?.systemPrompt || character?.greeting || undefined;
+      const regenReply: AiReply = await regenerateAiResponse(
+        user.uid,
+        historyPlain,
+        user.gender,
+        openRouterModelId,
+        groqModelId,
+        preferredProvider,
+        extraSystemPrompt,
+        isCharacterSession ? chatId : undefined
+      );
+      setUsage(regenReply.usage);
+      const messageDocRef = isCharacterSession
+        ? doc(firestore, 'users', user.uid, 'character_sessions', chatId, 'messages', lastModelMessage.id)
+        : doc(firestore, 'users', user.uid, 'chats', chatId, 'messages', lastModelMessage.id);
+      await updateDoc(messageDocRef, { content: regenReply.text });
 
     } catch (error) {
       console.error("Failed to regenerate response:", error);
@@ -319,7 +429,143 @@ export default function ChatPage() {
             </span>
             <p className="text-sm text-muted-foreground">Online</p>
           </div>
+          {isCharacterSession && relationshipLevel && (
+            <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Relationship:</span>
+              <span className="font-semibold text-foreground">{relationshipLevel}</span>
+              <span className="font-mono">XP: {affinityXp}</span>
+            </div>
+          )}
+          {user?.subscription === 'pro' && (user.openRouterSelectedModelName || user.groqSelectedModelName) && (
+            <div className="mt-1 flex items-center gap-2">
+              <p className="text-xs text-muted-foreground">Model:</p>
+              <p className="text-xs font-semibold text-foreground line-clamp-1">
+                {(user.preferredChatProvider === 'groq' ? user.groqSelectedModelName : user.openRouterSelectedModelName) ?? ''}
+              </p>
+              <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-xs">
+                <Link href="/my-ai">Change</Link>
+              </Button>
+            </div>
+          )}
         </div>
+
+        {isCharacterSession && (
+          <div className="ml-auto flex items-center gap-2">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="Memory">
+                  <Brain className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-full sm:max-w-md">
+                <SheetHeader>
+                  <SheetTitle>Memory</SheetTitle>
+                  <SheetDescription>Pin important things this character should remember.</SheetDescription>
+                </SheetHeader>
+
+                <div className="mt-4 space-y-3">
+                  <div className="space-y-2">
+                    <Input
+                      value={memoryText}
+                      onChange={(e) => setMemoryText(e.target.value)}
+                      placeholder="Add a memory (e.g., user likes horror stories)"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        className="flex-1"
+                        onClick={async () => {
+                          if (!memoryText.trim() || !user) return;
+                          const memCol = collection(firestore, 'users', user.uid, 'character_sessions', chatId, 'memory');
+                          if (editingMemory) {
+                            const memRef = doc(memCol, editingMemory.id);
+                            await updateDoc(memRef, { content: memoryText.trim(), updatedAt: serverTimestamp() });
+                            setEditingMemory(null);
+                          } else {
+                            await addDoc(memCol, {
+                              type: 'short',
+                              content: memoryText.trim(),
+                              isPinned: false,
+                              createdAt: serverTimestamp(),
+                              updatedAt: serverTimestamp(),
+                            });
+                          }
+                          setMemoryText('');
+                        }}
+                      >
+                        {editingMemory ? 'Save' : 'Add'}
+                      </Button>
+                      {editingMemory && (
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            setEditingMemory(null);
+                            setMemoryText('');
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {sortedMemory.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No memory yet.</p>
+                    ) : (
+                      sortedMemory.map((m) => (
+                        <div key={m.id} className="rounded-lg border p-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm">{m.content}</p>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={async () => {
+                                  if (!user) return;
+                                  const memRef = doc(firestore, 'users', user.uid, 'character_sessions', chatId, 'memory', m.id);
+                                  await updateDoc(memRef, { isPinned: !m.isPinned, updatedAt: serverTimestamp() });
+                                }}
+                                aria-label="Pin"
+                              >
+                                <Pin className={m.isPinned ? 'h-4 w-4 text-primary' : 'h-4 w-4'} />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => {
+                                  setEditingMemory(m);
+                                  setMemoryText(m.content);
+                                }}
+                                aria-label="Edit"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive"
+                                onClick={async () => {
+                                  if (!user) return;
+                                  const memRef = doc(firestore, 'users', user.uid, 'character_sessions', chatId, 'memory', m.id);
+                                  await deleteDoc(memRef);
+                                }}
+                                aria-label="Delete"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
+        )}
       </header>
 
       <ScrollArea className="flex-grow p-2 sm:p-4" ref={scrollAreaRef}>
@@ -373,7 +619,20 @@ export default function ChatPage() {
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleRegenerate}>
                       <RefreshCw className="h-4 w-4" />
                     </Button>
-                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toast({ title: 'Share feature coming soon!' })}>
+                     <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => {
+                        try {
+                          const url = window.location.href;
+                          navigator.clipboard.writeText(url);
+                          toast({ title: 'Chat link copied.' });
+                        } catch {
+                          toast({ title: 'Copy failed', variant: 'destructive' });
+                        }
+                      }}
+                    >
                       <Share2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -384,6 +643,14 @@ export default function ChatPage() {
 
       <footer className="sticky bottom-16 md:bottom-0 z-10 p-2 sm:p-4 border-t bg-background/80 backdrop-blur-sm">
         <div className="max-w-4xl mx-auto">
+          {usage && usage.limit > 0 && (
+            <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
+              <span>Messages today</span>
+              <span className="font-mono">
+                {Math.max(0, usage.limit - usage.used)} left / {usage.limit}
+              </span>
+            </div>
+          )}
           <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(input); }}>
             <div className="relative flex items-end gap-2">
               <Textarea

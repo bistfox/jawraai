@@ -9,7 +9,17 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { getJawraAISystemPrompt } from '../prompts';
+import { getPersonaSystemPrompt } from '../prompts';
+
+function isRetryableGeminiError(error: any) {
+  const code = error?.code ?? error?.cause?.code;
+  const status = error?.status ?? error?.cause?.status;
+  return status === 'UNAVAILABLE' || code === 503;
+}
+
+async function delay(ms: number) {
+  await new Promise((r) => setTimeout(r, ms));
+}
 
 const RegenerateAIMessageInputSchema = z.object({
   chatHistory: z
@@ -46,44 +56,64 @@ const regenerateAIMessageFlow = ai.defineFlow(
     outputSchema: RegenerateAIMessageOutputSchema,
   },
   async (input) => {
-    const mappedGender = input.userGender === 'male' ? 'Male' : 'Female';
-    const systemPrompt = getJawraAISystemPrompt(mappedGender);
+    const persona = input.userGender === 'male' ? 'magi' : 'jawra';
+    const systemPrompt = getPersonaSystemPrompt(persona);
+    const historyPrompt = input.chatHistory
+      .map((msg) => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
+      .join('\n');
 
-    const { text } = await ai.generate({
-      model: 'googleai/gemini-2.5-flash',
-      system: systemPrompt,
-      messages: input.chatHistory,
-      config: {
-        temperature: 0.95,
-        safetySettings: [
-          {
-            category: 'HARM_CATEGORY_HATE_SPEECH',
-            threshold: 'BLOCK_NONE',
-          },
-          {
-            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-            threshold: 'BLOCK_NONE',
-          },
-          {
-            category: 'HARM_CATEGORY_HARASSMENT',
-            threshold: 'BLOCK_NONE',
-          },
-          {
-            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-            threshold: 'BLOCK_NONE',
-          },
-          {
-            category: 'HARM_CATEGORY_CIVIC_INTEGRITY',
-            threshold: 'BLOCK_NONE',
-          },
-        ],
-      },
-    });
+    const models = [
+      'googleai/gemini-2.5-flash',
+      'googleai/gemini-2.0-flash',
+      'googleai/gemini-1.5-flash',
+    ] as const;
 
-    if (!text) {
-      throw new Error('Failed to generate AI message.');
+    let lastError: any = null;
+    for (let i = 0; i < models.length; i++) {
+      try {
+        const { text } = await ai.generate({
+          model: models[i],
+          system: systemPrompt,
+          prompt: historyPrompt,
+          config: {
+            temperature: 0.95,
+            safetySettings: [
+              {
+                category: 'HARM_CATEGORY_HATE_SPEECH',
+                threshold: 'BLOCK_NONE',
+              },
+              {
+                category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+                threshold: 'BLOCK_NONE',
+              },
+              {
+                category: 'HARM_CATEGORY_HARASSMENT',
+                threshold: 'BLOCK_NONE',
+              },
+              {
+                category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+                threshold: 'BLOCK_NONE',
+              },
+              {
+                category: 'HARM_CATEGORY_CIVIC_INTEGRITY',
+                threshold: 'BLOCK_NONE',
+              },
+            ],
+          },
+        });
+
+        if (!text) throw new Error('Failed to generate AI message.');
+        return text;
+      } catch (e: any) {
+        lastError = e;
+        if (isRetryableGeminiError(e) && i < models.length - 1) {
+          await delay(300 + i * 400);
+          continue;
+        }
+        throw e;
+      }
     }
 
-    return text;
+    throw lastError ?? new Error('Failed to regenerate AI message.');
   }
 );

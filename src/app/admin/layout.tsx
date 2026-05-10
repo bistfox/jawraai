@@ -11,7 +11,8 @@ import {
   Shield,
   Bot,
   LogOut,
-  FileText
+  FileText,
+  Sparkles
 } from 'lucide-react';
 import {
   SidebarProvider,
@@ -30,6 +31,8 @@ import { useUser } from '@/lib/hooks/use-user';
 import React, { useEffect } from 'react';
 import { getAuth, signOut } from 'firebase/auth';
 import { Toaster } from "@/components/ui/toaster";
+import { useFirestore } from '@/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 const AdminLogo = () => (
   <Link href="/admin/dashboard" className="flex items-center gap-2">
@@ -45,6 +48,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode; }
     const pathname = usePathname();
     const { user, isLoading } = useUser();
     const auth = getAuth();
+    const firestore = useFirestore();
+    const [adminChecked, setAdminChecked] = React.useState(false);
+    const [isAdmin, setIsAdmin] = React.useState(false);
     
     useEffect(() => {
         if (isLoading) return;
@@ -52,17 +58,31 @@ export default function AdminLayout({ children }: { children: React.ReactNode; }
             router.replace('/admin/login');
             return;
         }
-        if (user && user.email !== 'lofeelzone@gmail.com' && pathname !== '/admin/login') {
-            router.replace('/admin/login');
-        }
-    }, [user, isLoading, router, pathname]);
+        if (!user) return;
+
+        const run = async () => {
+          try {
+            const adminRef = doc(firestore, 'admins', user.uid);
+            const snap = await getDoc(adminRef);
+            const ok = snap.exists();
+            setIsAdmin(ok);
+            setAdminChecked(true);
+            if (!ok && pathname !== '/admin/login') router.replace('/admin/login');
+          } catch {
+            setIsAdmin(false);
+            setAdminChecked(true);
+            if (pathname !== '/admin/login') router.replace('/admin/login');
+          }
+        };
+        run();
+    }, [user, isLoading, router, pathname, firestore]);
 
     const handleLogout = async () => {
         await signOut(auth);
         router.push('/admin/login');
     };
 
-    if ((isLoading || !user) && pathname !== '/admin/login') {
+    if ((isLoading || !user || !adminChecked || !isAdmin) && pathname !== '/admin/login') {
        return (
          <div className="flex h-screen items-center justify-center bg-background">
            <div className="h-16 w-16 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
@@ -104,13 +124,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode; }
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
+                      <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/characters')} tooltip={{children: 'Characters'}}>
+                        <Link href="/admin/characters"><Sparkles /><span>Characters</span></Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
                       <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/payments')} tooltip={{children: 'Payments'}}>
-                        <Link href="#"><CreditCard /><span>Payments</span></Link>
+                        <Link href="/admin/payments"><CreditCard /><span>Payments</span></Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                      <SidebarMenuItem>
                       <SidebarMenuButton asChild isActive={pathname.startsWith('/admin/analytics')} tooltip={{children: 'Analytics'}}>
-                        <Link href="#"><BarChart2 /><span>Analytics</span></Link>
+                        <Link href="/admin/analytics"><BarChart2 /><span>Analytics</span></Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   </SidebarMenu>
@@ -119,7 +144,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode; }
                   <SidebarMenu>
                     <SidebarMenuItem>
                       <SidebarMenuButton asChild isActive={pathname === '/admin/settings'} tooltip={{children: 'Settings'}}>
-                        <Link href="#"><Settings /><span>Settings</span></Link>
+                        <Link href="/admin/settings"><Settings /><span>Settings</span></Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>

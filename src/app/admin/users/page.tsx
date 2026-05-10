@@ -31,7 +31,12 @@ export default function AdminUsersPage() {
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
         </div>
       ) : (
-        <DataTable columns={columns} data={users ?? []} searchKey="email" searchPlaceholder="Filter by email..." />
+        <DataTable
+          columns={columns}
+          data={users ?? []}
+          searchKey="username"
+          searchPlaceholder="Filter by username..."
+        />
       )}
     </div>
   );

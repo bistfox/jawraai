@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { Home, MessageSquare, PlusSquare, Settings, User as UserIcon, LogOut, Bot, Sparkles } from 'lucide-react';
+import { Home, MessageSquare, PlusSquare, Settings, User as UserIcon, LogOut, Bot, Sparkles, CreditCard, Users, Gift } from 'lucide-react';
 import {
   SidebarProvider,
   Sidebar,
@@ -48,6 +48,8 @@ export default function MainAppLayout({
     
     if (!user) {
       router.replace('/');
+    } else if (user.email && user.emailVerified === false && pathname !== '/verify-email') {
+      router.replace('/verify-email');
     } else if (!user.username && pathname !== '/onboarding') {
       router.replace('/onboarding');
     }
@@ -65,8 +67,8 @@ export default function MainAppLayout({
 
   if (isLoading || !user || (!user.username && pathname !== '/onboarding')) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <div className="h-16 w-16 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
+      <div suppressHydrationWarning className="flex h-screen items-center justify-center bg-background">
+        <div suppressHydrationWarning className="h-16 w-16 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
       </div>
     );
   }
@@ -86,6 +88,16 @@ export default function MainAppLayout({
                 <Link href="/dashboard"><Home /><span>Dashboard</span></Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname === '/subscription'} tooltip={{children: 'Subscription'}}>
+                <Link href="/subscription"><CreditCard /><span>Subscription</span></Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname.startsWith('/characters')} tooltip={{children: 'Characters'}}>
+                <Link href="/characters"><Users /><span>Characters</span></Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
              <SidebarMenuItem>
               <SidebarMenuButton onClick={handleNewChat} tooltip={{children: 'New Chat'}}>
                 <PlusSquare /><span>New Chat</span>
@@ -94,6 +106,11 @@ export default function MainAppLayout({
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname.startsWith('/chat')} tooltip={{children: 'Chat History'}}>
                 <Link href="/chat/history"><MessageSquare /><span>Chat History</span></Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname === '/referrals'} tooltip={{children: 'Referrals'}}>
+                <Link href="/referrals"><Gift /><span>Referrals</span></Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
             {user.subscription === 'pro' && (

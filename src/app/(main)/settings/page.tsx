@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User as UserIcon } from 'lucide-react';
+import { Gift, User as UserIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function SettingsPage() {
@@ -74,6 +74,37 @@ export default function SettingsPage() {
                 </div>
                 <Button type="submit">Save Changes</Button>
               </form>
+            </CardContent>
+          </Card>
+
+          <Card className="mt-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Gift className="h-5 w-5 text-primary" />
+                Referral
+              </CardTitle>
+              <CardDescription>Share your code and earn rewards.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="refCode">Referral Code</Label>
+                <Input id="refCode" value={user.refCode ?? ''} disabled />
+              </div>
+              <div className="text-sm text-muted-foreground">
+                <p>Total referrals: {user.totalReferrals ?? 0}</p>
+                <p>Coins: {user.coins ?? 0}</p>
+                <p>Bonus messages: {user.bonusMessagesBalance ?? 0}</p>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(user.refCode ?? '');
+                  toast({ title: 'Referral code copied' });
+                }}
+              >
+                Copy Referral Code
+              </Button>
             </CardContent>
           </Card>
         </div>

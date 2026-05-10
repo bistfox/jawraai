@@ -10,6 +10,7 @@ import { Bot } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { useFirebaseApp } from '@/firebase';
+import { isAdminEmail } from '@/lib/admin';
 
 export default function AdminLoginPage() {
     const router = useRouter();
@@ -25,13 +26,11 @@ export default function AdminLoginPage() {
         e.preventDefault();
         setIsLoading(true);
 
-        const ADMIN_EMAIL = 'lofeelzone@gmail.com';
-
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            if (user.email === ADMIN_EMAIL) {
+            if (isAdminEmail(user.email)) {
                 toast({ title: "Welcome Admin!", description: "Redirecting to dashboard..." });
                 router.push('/admin/dashboard');
             } else {

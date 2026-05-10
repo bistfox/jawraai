@@ -41,6 +41,13 @@ const openRouterFreeModels = [
     { id: 'liquid/lfm-2.5-1.2b-instruct:free', name: 'LFM 2.5 1.2B Thinking (LiquidAI)', description: 'Lightweight reasoning, edge-friendly' },
 ];
 
+const groqModels = [
+  { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile', description: 'General purpose, strong chat quality' },
+  { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant', description: 'Fast and cheap, good for quick replies' },
+  { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B 32K', description: 'Long context, good reasoning' },
+  { id: 'gemma2-9b-it', name: 'Gemma 2 9B IT', description: 'Lightweight instruction-tuned model' },
+];
+
 export default function MyAiPage() {
   const { user, refetchUser } = useUser();
   const firestore = useFirestore();
@@ -89,6 +96,47 @@ export default function MyAiPage() {
     }
   }
 
+  const handleSelectOpenRouterModel = async (model: { id: string; name: string }) => {
+    if (!user) return;
+    try {
+      const userDocRef = doc(firestore, 'users', user.uid);
+      await updateDoc(userDocRef, {
+        openRouterSelectedModelId: model.id,
+        openRouterSelectedModelName: model.name,
+      });
+      await refetchUser();
+      toast({ title: 'Selected!', description: `OpenRouter model set to: ${model.name}` });
+    } catch (error) {
+      console.error('Failed to select OpenRouter model:', error);
+      toast({
+        title: 'Error',
+        description: 'Could not save selected model. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleSelectGroqModel = async (model: { id: string; name: string }) => {
+    if (!user) return;
+    try {
+      const userDocRef = doc(firestore, 'users', user.uid);
+      await updateDoc(userDocRef, {
+        groqSelectedModelId: model.id,
+        groqSelectedModelName: model.name,
+        preferredChatProvider: 'groq',
+      });
+      await refetchUser();
+      toast({ title: 'Selected!', description: `Groq model set to: ${model.name}` });
+    } catch (error) {
+      console.error('Failed to select Groq model:', error);
+      toast({
+        title: 'Error',
+        description: 'Could not save selected model. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (!user) {
     return null;
   }
@@ -102,7 +150,7 @@ export default function MyAiPage() {
             <CardDescription>This feature is available for Pro users only.</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">Upgrade to Pro to use custom AI models, get unlimited messages, and access exclusive free models from OpenRouter.</p>
+            <p className="text-muted-foreground">Upgrade to Pro to use custom AI models, get unlimited messages, and access exclusive OpenRouter models.</p>
             <Button asChild className="mt-6">
               <Link href="/upgrade">Upgrade Now <Sparkles className="ml-2 h-4 w-4"/></Link>
             </Button>
@@ -112,6 +160,12 @@ export default function MyAiPage() {
     );
   }
   
+  const effectiveSelectedOpenRouterId =
+    user.openRouterSelectedModelId || 'z-ai/glm-4.5-air:free';
+
+  const effectiveSelectedGroqId =
+    user.groqSelectedModelId || 'llama-3.3-70b-versatile';
+
   const pageTitle = user.gender === 'Male' ? 'My Magi AI Pro' : 'My Jawra AI Pro';
 
   return (
@@ -123,8 +177,8 @@ export default function MyAiPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>OpenRouter Free Models (Pro Perk)</CardTitle>
-          <CardDescription>As a Pro user, you get unlimited access to these high-quality free models from OpenRouter.</CardDescription>
+          <CardTitle>OpenRouter Models (Pro Perk)</CardTitle>
+          <CardDescription>As a Pro user, you get access to these OpenRouter models.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -137,10 +191,46 @@ export default function MyAiPage() {
                         <p className="text-xs text-muted-foreground">{model.description}</p>
                      </div>
                   </div>
-                  <Button variant="outline" size="sm">Select</Button>
+                  <Button
+                    variant={effectiveSelectedOpenRouterId === model.id ? 'default' : 'outline'}
+                    size="sm"
+                    disabled={effectiveSelectedOpenRouterId === model.id}
+                    onClick={() => handleSelectOpenRouterModel(model)}
+                  >
+                    {effectiveSelectedOpenRouterId === model.id ? 'Selected' : 'Select'}
+                  </Button>
                 </div>
               ))}
             </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Groq Models (Pro Perk)</CardTitle>
+          <CardDescription>Select a Groq model for your chatbot.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {groqModels.map((model) => (
+              <div key={model.id} className="flex items-center justify-between p-3 rounded-lg border bg-card/50">
+                <div className="flex items-center gap-3">
+                  <Bot className="h-6 w-6 text-primary" />
+                  <div>
+                    <p className="font-semibold text-md">{model.name}</p>
+                    <p className="text-xs text-muted-foreground">{model.description}</p>
+                  </div>
+                </div>
+                <Button
+                  variant={effectiveSelectedGroqId === model.id && user.preferredChatProvider === 'groq' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handleSelectGroqModel(model)}
+                >
+                  {effectiveSelectedGroqId === model.id && user.preferredChatProvider === 'groq' ? 'Selected' : 'Select'}
+                </Button>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
