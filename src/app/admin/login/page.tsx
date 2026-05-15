@@ -9,14 +9,15 @@ import { Label } from "@/components/ui/label";
 import { Bot } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { useFirebaseApp } from '@/firebase';
-import { isAdminEmail } from '@/lib/admin';
+import { useFirebaseApp, useFirestore } from '@/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function AdminLoginPage() {
     const router = useRouter();
     const { toast } = useToast();
     const app = useFirebaseApp();
     const auth = getAuth(app);
+    const firestore = useFirestore();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -30,14 +31,15 @@ export default function AdminLoginPage() {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            if (isAdminEmail(user.email)) {
+            const adminSnap = await getDoc(doc(firestore, 'admins', user.uid));
+            if (adminSnap.exists()) {
                 toast({ title: "Welcome Admin!", description: "Redirecting to dashboard..." });
                 router.push('/admin/dashboard');
             } else {
-                await auth.signOut(); // Sign out non-admin user
+                await auth.signOut();
                 toast({
                     title: "Access Denied",
-                    description: "You do not have permission to access the admin panel.",
+                    description: "This account is not in the admins list. Ask an owner to create admins/{yourUid} in Firestore.",
                     variant: "destructive",
                 });
                 setIsLoading(false);

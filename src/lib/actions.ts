@@ -3,8 +3,9 @@
 import { explicitAIChatInteraction } from '@/ai/flows/explicit-ai-chat-interaction-flow';
 import { regenerateAIMessage } from '@/ai/flows/regenerate-ai-message-flow';
 import type { Message, User } from '@/types';
-import { getAdminDb } from './firebase-admin';
-import { Timestamp } from 'firebase-admin/firestore';
+import { getAdminDb, getAdminDbSafe } from './firebase-admin';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { monthKeyUTC, weekKeyUTC } from '@/lib/referrals';
 import { getPersonaSystemPrompt } from '@/ai/prompts';
 import { getEntitlements } from '@/lib/entitlements';
 import type { PlanId } from '@/lib/plans';
@@ -459,7 +460,9 @@ export async function regenerateAiResponse(
   }
 }
 
-export async function generateImage(uid: string, prompt: string) {
+export type ImageGenSize = '1024x1024' | '1536x1024' | '1024x1536';
+
+export async function generateImage(uid: string, prompt: string, opts?: { imageSize?: ImageGenSize }) {
   const quota = await consumeDailyImageQuota(uid);
   if (!quota.allowed) {
     return {
@@ -476,40 +479,58 @@ export async function generateImage(uid: string, prompt: string) {
     return { ok: false as const, error: 'Prompt is required.', usage: quota.usage };
   }
 
+  const imageSize = opts?.imageSize ?? '1024x1024';
+  const aspectHint =
+    imageSize === '1536x1024'
+      ? ' Use a wide horizontal landscape composition.'
+      : imageSize === '1024x1536'
+        ? ' Use a tall vertical portrait composition.'
+        : '';
+
   let url: string | undefined;
   const providerErrors: string[] = [];
 
-  // 1) Gemini first (if key present)
+  // 1) Gemini first (if key present) — try multiple models; some accounts only support certain endpoints.
   const geminiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
   if (geminiKey) {
-    try {
-      const geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: `Generate an image: ${trimmed}` }] }],
-            generationConfig: {
-              responseModalities: ['TEXT', 'IMAGE'],
-            },
-          }),
-        }
-      );
+    const geminiModels = [
+      'gemini-2.0-flash-exp',
+      process.env.GEMINI_IMAGE_MODEL?.trim() || 'gemini-2.0-flash-preview-image-generation',
+    ].filter((m, i, a) => m && a.indexOf(m) === i);
 
-      if (geminiRes.ok) {
-        const json: any = await geminiRes.json();
-        const parts = json?.candidates?.[0]?.content?.parts ?? [];
-        const inline = parts.find((p: any) => p?.inlineData?.data)?.inlineData?.data;
-        if (inline) {
-          url = `data:image/png;base64,${inline}`;
+    for (const model of geminiModels) {
+      if (url) break;
+      try {
+        const geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: `Generate an image: ${trimmed}${aspectHint}` }] }],
+              generationConfig: {
+                responseModalities: ['TEXT', 'IMAGE'],
+              },
+            }),
+          }
+        );
+
+        if (geminiRes.ok) {
+          const json: any = await geminiRes.json();
+          const parts = json?.candidates?.[0]?.content?.parts ?? [];
+          const inline = parts.find((p: any) => p?.inlineData?.data)?.inlineData?.data;
+          if (inline) {
+            url = `data:image/png;base64,${inline}`;
+          } else {
+            providerErrors.push(`Gemini ${model}: no inline image in response`.slice(0, 120));
+          }
+        } else {
+          const text = await geminiRes.text().catch(() => '');
+          providerErrors.push(`Gemini ${model} ${geminiRes.status}: ${text}`.slice(0, 220));
         }
-      } else {
-        const text = await geminiRes.text().catch(() => '');
-        providerErrors.push(`Gemini ${geminiRes.status}: ${text}`.slice(0, 220));
+      } catch (e: any) {
+        providerErrors.push(`Gemini ${model}: ${e?.message ?? 'unknown'}`);
       }
-    } catch (e: any) {
-      providerErrors.push(`Gemini error: ${e?.message ?? 'unknown'}`);
     }
   } else {
     providerErrors.push('Gemini key missing');
@@ -530,7 +551,7 @@ export async function generateImage(uid: string, prompt: string) {
         body: JSON.stringify({
           model: 'google/gemini-2.5-flash-image-preview',
           prompt: trimmed,
-          size: '1024x1024',
+          size: imageSize,
         }),
       });
 
@@ -542,6 +563,28 @@ export async function generateImage(uid: string, prompt: string) {
       } else {
         const text = await orRes.text().catch(() => '');
         providerErrors.push(`OpenRouter ${orRes.status}: ${text}`.slice(0, 220));
+        if (imageSize !== '1024x1024') {
+          const or2 = await fetch('https://openrouter.ai/api/v1/images/generations', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+              'Content-Type': 'application/json',
+              'HTTP-Referer': referer,
+              'X-Title': 'JawraAI',
+            },
+            body: JSON.stringify({
+              model: 'google/gemini-2.5-flash-image-preview',
+              prompt: trimmed,
+              size: '1024x1024',
+            }),
+          });
+          if (or2.ok) {
+            const json2: any = await or2.json();
+            const rawUrl2: string | undefined = json2?.data?.[0]?.url;
+            const b642: string | undefined = json2?.data?.[0]?.b64_json;
+            url = rawUrl2 ?? (b642 ? `data:image/png;base64,${b642}` : undefined);
+          }
+        }
       }
     } catch (e: any) {
       providerErrors.push(`OpenRouter error: ${e?.message ?? 'unknown'}`);
@@ -590,19 +633,10 @@ export async function applyReferralRewardsOnOnboarding(
   const referrerRef = adminDb.collection('users').doc(referrerDoc.id);
   const referredRef = adminDb.collection('users').doc(uid);
   const referralRef = adminDb.collection('referrals').doc();
-  const wk = (() => {
-    const d = new Date();
-    const utc = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-    const day = utc.getUTCDay() || 7;
-    utc.setUTCDate(utc.getUTCDate() + 4 - day);
-    const yearStart = new Date(Date.UTC(utc.getUTCFullYear(), 0, 1));
-    const weekNo = Math.ceil((((utc.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-    return `${utc.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
-  })();
-  const mk = (() => {
-    const d = new Date();
-    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
-  })();
+  const wk = weekKeyUTC();
+  const mk = monthKeyUTC();
+  const weekBoardEntry = adminDb.collection('leaderboard_week').doc(wk).collection('entries').doc(referrerDoc.id);
+  const monthBoardEntry = adminDb.collection('leaderboard_month').doc(mk).collection('entries').doc(referrerDoc.id);
 
   await adminDb.runTransaction(async (tx) => {
     const referrerSnap = await tx.get(referrerRef);
@@ -657,15 +691,54 @@ export async function applyReferralRewardsOnOnboarding(
       monthKey: mk,
       createdAt: Timestamp.now(),
     });
+
+    const displayName = String(referrer.username ?? 'User').slice(0, 80);
+    tx.set(
+      weekBoardEntry,
+      {
+        uid: referrerDoc.id,
+        username: displayName,
+        score: FieldValue.increment(1),
+      },
+      { merge: true }
+    );
+    tx.set(
+      monthBoardEntry,
+      {
+        uid: referrerDoc.id,
+        username: displayName,
+        score: FieldValue.increment(1),
+      },
+      { merge: true }
+    );
   });
 
   return { ok: true as const, applied: true };
 }
 
 
-export async function approveSubscription(requestId: string, userId: string, planName: string) {
+function inferPlanIdFromLabel(requestedPlan: string): PlanId {
+  const l = requestedPlan.toLowerCase();
+  if (l.includes('premium')) return 'premium';
+  if (l.includes('pro')) return 'pro';
+  return 'basic';
+}
+
+export async function approveSubscription(
+  requestId: string,
+  userId: string,
+  requestedPlan: string,
+  planIdFromRequest?: PlanId
+) {
   try {
-    const adminDb = getAdminDb();
+    const adminDb = getAdminDbSafe();
+    if (!adminDb) {
+      return {
+        success: false,
+        message:
+          'FIREBASE_ADMIN_CONFIG is not set or invalid on the server. Add the service account JSON to approve subscriptions.',
+      };
+    }
     const userRef = adminDb.collection('users').doc(userId);
     const requestRef = adminDb.collection('subscription_requests').doc(requestId);
 
@@ -674,11 +747,14 @@ export async function approveSubscription(requestId: string, userId: string, pla
     oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
     const expiryDate = Timestamp.fromDate(oneMonthFromNow);
 
+    const planId: PlanId = planIdFromRequest ?? inferPlanIdFromLabel(requestedPlan);
+
     const batch = adminDb.batch();
 
     batch.update(userRef, {
-      subscription: 'pro', // Assuming all manual plans are 'pro' for now
-      subscriptionPlan: planName,
+      subscription: 'pro',
+      planId,
+      subscriptionPlan: requestedPlan as User['subscriptionPlan'],
       subscriptionStart: now,
       subscriptionExpiry: expiryDate,
       subscriptionStatus: 'active',
@@ -698,25 +774,32 @@ export async function approveSubscription(requestId: string, userId: string, pla
     });
 
     await batch.commit();
-    return { success: true, message: "Subscription approved successfully." };
+    return { success: true, message: 'Subscription approved successfully.' };
   } catch (error: any) {
-    console.error("Error approving subscription:", error);
+    console.error('Error approving subscription:', error);
     return { success: false, message: error.message };
   }
 }
 
 export async function rejectSubscription(requestId: string, reason: string) {
-   try {
-    const adminDb = getAdminDb();
+  try {
+    const adminDb = getAdminDbSafe();
+    if (!adminDb) {
+      return {
+        success: false,
+        message:
+          'FIREBASE_ADMIN_CONFIG is not set or invalid on the server. Add the service account JSON to reject subscriptions.',
+      };
+    }
     const requestRef = adminDb.collection('subscription_requests').doc(requestId);
     await requestRef.update({
       status: 'rejected',
       adminNotes: reason,
       reviewedAt: Timestamp.now(),
     });
-    return { success: true, message: "Subscription rejected." };
+    return { success: true, message: 'Subscription rejected.' };
   } catch (error: any) {
-    console.error("Error rejecting subscription:", error);
+    console.error('Error rejecting subscription:', error);
     return { success: false, message: error.message };
   }
 }

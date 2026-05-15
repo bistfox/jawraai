@@ -47,7 +47,8 @@ const ActionsCell = ({ request }: { request: SubscriptionRequest }) => {
     const result = await approveSubscription(
       request.id,
       request.userId,
-      request.requestedPlan
+      request.requestedPlan,
+      request.planId
     );
     if (result.success) {
       toast({ title: 'Success', description: 'Subscription approved.' });

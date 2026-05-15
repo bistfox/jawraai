@@ -1,4 +1,5 @@
 import admin from 'firebase-admin';
+import type { Firestore } from 'firebase-admin/firestore';
 
 function parseServiceAccountConfig(rawValue: string) {
   const trimmed = rawValue.trim();
@@ -53,6 +54,21 @@ function getAdminApp() {
   return admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
   });
+}
+
+export function hasFirebaseAdminConfig(): boolean {
+  return Boolean(process.env.FIREBASE_ADMIN_CONFIG?.trim());
+}
+
+/** Returns Firestore or null if admin is not configured (avoids 500 on optional paths). */
+export function getAdminDbSafe(): Firestore | null {
+  if (!hasFirebaseAdminConfig()) return null;
+  try {
+    return getAdminDb();
+  } catch (e) {
+    console.error('getAdminDbSafe:', e);
+    return null;
+  }
 }
 
 export function getAdminDb() {

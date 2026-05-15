@@ -58,6 +58,14 @@ export interface User {
   createdAt?: Timestamp;
 }
 
+/** Public weekly/monthly referral scores; written only via Admin SDK. */
+export interface LeaderboardEntry {
+  id: string;
+  uid: string;
+  username: string;
+  score: number;
+}
+
 export interface ReferralRecord {
   id: string;
   referrerUid: string;
@@ -131,6 +139,8 @@ export interface Character {
   exampleConversations?: { user: string; ai: string }[];
   systemPrompt?: string;
   isFeatured?: boolean;
+  /** 'free' = any logged-in user; 'pro' / 'premium' = paid tiers (see subscription-access) */
+  accessTier?: 'free' | 'pro' | 'premium';
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }

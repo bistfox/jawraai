@@ -11,8 +11,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useUser } from '@/lib/hooks/use-user';
 import { useToast } from '@/hooks/use-toast';
-import { PREBUILT_CHARACTERS } from '@/lib/prebuilt-characters';
+import { getPrebuiltCharacterById } from '@/lib/prebuilt-characters';
+import { canAccessCharacter } from '@/lib/subscription-access';
 import Link from 'next/link';
+import { Lock } from 'lucide-react';
 
 export default function CharacterDetailPage() {
   const params = useParams();
@@ -24,13 +26,7 @@ export default function CharacterDetailPage() {
   const [character, setCharacter] = useState<Character | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const prebuiltFallback = useMemo(() => {
-    if (!characterId.startsWith('prebuilt-')) return null;
-    const idx = Number(characterId.replace('prebuilt-', ''));
-    const base = PREBUILT_CHARACTERS[idx];
-    if (!base) return null;
-    return { ...base, id: characterId } as Character;
-  }, [characterId]);
+  const prebuiltFallback = useMemo(() => getPrebuiltCharacterById(characterId), [characterId]);
 
   React.useEffect(() => {
     let mounted = true;
@@ -60,8 +56,24 @@ export default function CharacterDetailPage() {
     };
   }, [characterId, firestore, prebuiltFallback]);
 
+  const effectiveTier = (character?.accessTier ?? 'free') as 'free' | 'pro' | 'premium';
+  const locked = !canAccessCharacter(user, effectiveTier);
+  const tierLabel =
+    effectiveTier === 'free' ? 'Free' : effectiveTier === 'premium' ? 'Premium' : 'Pro';
+
   const handleStartChat = async () => {
-    if (!user) return;
+    if (!user || !character) return;
+    if (locked) {
+      const need =
+        effectiveTier === 'premium' ? 'Premium or Advance plan' : 'an active paid (Pro) plan';
+      toast({
+        title: 'Upgrade required',
+        description: `This character needs ${need} to chat.`,
+        variant: 'destructive',
+      });
+      router.push('/upgrade');
+      return;
+    }
     try {
       const sessionsCol = collection(firestore, 'users', user.uid, 'character_sessions');
       const sessionDoc = await addDoc(sessionsCol, {
@@ -101,7 +113,16 @@ export default function CharacterDetailPage() {
           <CardHeader className="flex flex-row items-center gap-4">
             <img src={character.avatarUrl} alt={character.name} className="h-16 w-16 rounded-full border" />
             <div className="min-w-0">
-              <CardTitle className="text-2xl">{character.name}</CardTitle>
+              <CardTitle className="text-2xl flex items-center gap-2 flex-wrap">
+                {character.name}
+                {locked ? (
+                  <Badge variant="secondary" className="gap-1">
+                    <Lock className="h-3 w-3" /> {tierLabel}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline">{tierLabel}</Badge>
+                )}
+              </CardTitle>
               <CardDescription>{character.category}</CardDescription>
               <div className="mt-2 flex flex-wrap gap-2">
                 {(character.tags ?? []).slice(0, 6).map((t) => (
@@ -121,9 +142,15 @@ export default function CharacterDetailPage() {
               </div>
             )}
             <div className="flex flex-wrap gap-2">
-              <Button onClick={handleStartChat} size="lg">
-                Start chat
-              </Button>
+              {locked ? (
+                <Button asChild size="lg">
+                  <Link href="/upgrade">Upgrade to unlock</Link>
+                </Button>
+              ) : (
+                <Button onClick={handleStartChat} size="lg">
+                  Start chat
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

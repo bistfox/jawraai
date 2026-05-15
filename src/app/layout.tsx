@@ -12,8 +12,17 @@ const playfairDisplay = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: 'JawraAI',
-  description: '18+ Only – No Limits 🔥',
+  title: {
+    default: 'JawraAI — adult AI chat & characters',
+    template: '%s | JawraAI',
+  },
+  description:
+    'JawraAI: AI chat, characters, image studio, referrals, and subscriptions. 18+ platform.',
+  keywords: ['JawraAI', 'AI chat', 'characters', 'Bangladesh', '18+'],
+  openGraph: {
+    title: 'JawraAI',
+    description: 'AI chat, characters, and creative tools.',
+  },
 };
 
 export default function RootLayout({
@@ -22,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="bn" className="dark" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />

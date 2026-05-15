@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useState, useEffect, useRef, useMemo, Suspense } from 'react';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Send, Copy, RefreshCw, Share2, Mic, Paperclip, Bot, Brain, Pin, Trash2, Pencil } from 'lucide-react';
+import { Send, Copy, RefreshCw, Share2, Mic, Paperclip, Bot, Brain, Pin, Trash2, Pencil, Volume2, Square } from 'lucide-react';
 import { useUser } from '@/lib/hooks/use-user';
 import { getAiResponse, regenerateAiResponse, type AiReply } from '@/lib/actions';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -34,6 +34,11 @@ import type { Character, CharacterSession } from '@/types';
 import type { MemoryItem } from '@/types';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
+import { isSpeechSynthesisAvailable, speakText, stopSpeech } from '@/lib/speech';
+import { getPrebuiltCharacterById } from '@/lib/prebuilt-characters';
+import { hasPaidSubscription, canAccessCharacter } from '@/lib/subscription-access';
+import { normalizeChatMarkdownHref } from '@/lib/markdown-link';
+import { isSpeechRecognitionAvailable, startSpeechRecognition } from '@/lib/speech-recognition';
 
 const MALE_LIMIT_MESSAGES = [
     "আ মাদারচোদ {username}, তোর লিমিট শেষ রে খাঙ্কির বেটা! 🔥 তোর এলাকায় এসে তোর মায়েরে চুদবো যদি আবার মেসেজ পাঠাস! [Upgrade to Magi Bot Pro](/upgrade) করলে unlimited + ফ্রি OpenRouter models পাবি 😈",
@@ -87,7 +92,22 @@ const FEMALE_LIMIT_MESSAGES = [
 
 
 export default function ChatPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-full flex-1 items-center justify-center p-8">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </div>
+      }
+    >
+      <ChatPageInner />
+    </Suspense>
+  );
+}
+
+function ChatPageInner() {
   const params = useParams();
+  const router = useRouter();
   const chatId = params.id as string;
   const { user } = useUser();
   const searchParams = useSearchParams();
@@ -109,6 +129,9 @@ export default function ChatPage() {
   const [affinityXp, setAffinityXp] = useState<number>(0);
   const [memoryText, setMemoryText] = useState('');
   const [editingMemory, setEditingMemory] = useState<MemoryItem | null>(null);
+  const [ttsActiveMessageId, setTtsActiveMessageId] = useState<string | null>(null);
+  const speechRecRef = useRef<{ stop: () => void } | null>(null);
+  const [isListening, setIsListening] = useState(false);
 
   const persona = isCharacterSession && character
     ? { name: character.name, avatarId: 'jawra-ai-avatar' }
@@ -152,6 +175,9 @@ export default function ChatPage() {
         const charSnap = await getDoc(charRef);
         if (charSnap.exists()) {
           setCharacter({ id: charSnap.id, ...(charSnap.data() as any) } as Character);
+        } else {
+          const pb = getPrebuiltCharacterById(session.characterId);
+          if (pb) setCharacter(pb);
         }
       } catch (e) {
         console.error(e);
@@ -210,6 +236,24 @@ export default function ChatPage() {
   const handleSendMessage = async (messageText: string) => {
     if (!messageText.trim() || !user?.gender || !chatId || !firestore) return;
 
+    if (
+      isCharacterSession &&
+      character &&
+      !canAccessCharacter(user, (character.accessTier ?? 'free') as 'free' | 'pro' | 'premium')
+    ) {
+      const tier = (character.accessTier ?? 'free') as string;
+      toast({
+        title: 'Subscription required',
+        description:
+          tier === 'premium'
+            ? 'This character requires a Premium or Advance plan.'
+            : 'This character needs an active paid plan.',
+        variant: 'destructive',
+      });
+      router.push('/upgrade');
+      return;
+    }
+
     const userMessageContent = messageText;
     setInput('');
     setIsLoading(true);
@@ -227,7 +271,7 @@ export default function ChatPage() {
     setIsTyping(true);
 
     try {
-        const isPro = user.subscription === 'pro' || !!user.planId;
+        const isPro = hasPaidSubscription(user);
         const preferredProvider = isPro ? user.preferredChatProvider : undefined;
         const openRouterModelId = isPro
           ? user.openRouterSelectedModelId || 'z-ai/glm-4.5-air:free'
@@ -312,6 +356,13 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages, isTyping]);
 
+  useEffect(() => {
+    return () => {
+      stopSpeech();
+      speechRecRef.current?.stop();
+    };
+  }, []);
+
 
   const handleRegenerate = async () => {
     if (!user?.gender || !messages || messages.length === 0 || isLoading) return;
@@ -320,7 +371,7 @@ export default function ChatPage() {
     if (lastModelMessageIndex === -1) return;
 
     const lastModelMessage = messages[lastModelMessageIndex];
-    if (user.subscription !== 'pro' && lastModelMessage.content.includes('Upgrade to')) {
+    if (!hasPaidSubscription(user) && lastModelMessage.content.includes('Upgrade to')) {
         toast({ title: "Can't regenerate this message.", variant: 'destructive'});
         return;
     }
@@ -332,11 +383,11 @@ export default function ChatPage() {
     setIsTyping(true);
 
     try {
-      const preferredProvider = user.subscription === 'pro' ? user.preferredChatProvider : undefined;
-      const openRouterModelId = user.subscription === 'pro'
+      const preferredProvider = hasPaidSubscription(user) ? user.preferredChatProvider : undefined;
+      const openRouterModelId = hasPaidSubscription(user)
         ? user.openRouterSelectedModelId || 'z-ai/glm-4.5-air:free'
         : undefined;
-      const groqModelId = user.subscription === 'pro'
+      const groqModelId = hasPaidSubscription(user)
         ? user.groqSelectedModelId || 'llama-3.3-70b-versatile'
         : undefined;
       const extraSystemPrompt = character?.systemPrompt || character?.greeting || undefined;
@@ -369,38 +420,72 @@ export default function ChatPage() {
     navigator.clipboard.writeText(content);
     toast({ title: 'Copied to clipboard!' });
   };
+
+  const handleTtsToggle = (message: Message) => {
+    if (message.role !== 'model') return;
+    if (ttsActiveMessageId === message.id) {
+      stopSpeech();
+      setTtsActiveMessageId(null);
+      return;
+    }
+    if (!isSpeechSynthesisAvailable()) {
+      toast({
+        title: 'Text-to-speech unavailable',
+        description: 'Your browser does not support speech synthesis.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setTtsActiveMessageId(message.id);
+    speakText(message.content, {
+      onEnd: () => {
+        setTtsActiveMessageId((cur) => (cur === message.id ? null : cur));
+      },
+    });
+  };
   
   const lastMessageIsModel = messages && messages.length > 0 && messages[messages.length - 1].role === 'model';
   
   const MessageContent = ({ content }: { content: string }) => {
     const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
     const parts = content.split(linkRegex);
-    
+
     if (parts.length <= 1) {
-      return <p className="whitespace-pre-wrap">{content}</p>;
+      return <p className="whitespace-pre-wrap break-words">{content}</p>;
     }
 
     return (
-      <p className="whitespace-pre-wrap">
+      <p className="whitespace-pre-wrap break-words">
         {parts.map((part, index) => {
-          if (index % 3 === 1) { 
-            const linkUrl = parts[index + 1];
+          if (index % 3 === 1) {
+            const rawHref = parts[index + 1];
             const linkText = part;
-            const isInternal = linkUrl.startsWith('/');
-            return isInternal ? (
-              <Link key={index} href={linkUrl} className="underline text-primary hover:text-primary/80 font-bold">
-                {linkText}
-              </Link>
-            ) : (
-              <a key={index} href={linkUrl} target="_blank" rel="noopener noreferrer" className="underline text-primary hover:text-primary/80 font-bold">
+            const { href, isExternal } = normalizeChatMarkdownHref(String(rawHref));
+            return isExternal ? (
+              <a
+                key={index}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="pointer-events-auto relative z-10 font-bold text-primary underline hover:text-primary/80"
+              >
                 {linkText}
               </a>
+            ) : (
+              <Link
+                key={index}
+                href={href}
+                className="pointer-events-auto relative z-10 font-bold text-primary underline hover:text-primary/80"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {linkText}
+              </Link>
             );
           }
-          if (index % 3 === 2) { 
+          if (index % 3 === 2) {
             return null;
           }
-          return part; 
+          return part;
         })}
       </p>
     );
@@ -411,6 +496,46 @@ export default function ChatPage() {
     const textarea = e.target;
     textarea.style.height = 'auto';
     textarea.style.height = `${textarea.scrollHeight}px`;
+  };
+
+  const toggleSpeechInput = () => {
+    if (isListening) {
+      speechRecRef.current?.stop();
+      speechRecRef.current = null;
+      setIsListening(false);
+      return;
+    }
+    if (!isSpeechRecognitionAvailable()) {
+      toast({
+        title: 'Speaking mode unavailable',
+        description: 'Use Chrome/Edge on desktop, or type your message.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const lang = /[\u0980-\u09FF]/.test(input) ? 'bn-BD' : 'en-US';
+    const ctrl = startSpeechRecognition({
+      lang,
+      continuous: false,
+      interimResults: true,
+      onResult: (text, isFinal) => {
+        if (isFinal && text.trim()) {
+          setInput((p) => `${p}${p && !/\s$/.test(p) ? ' ' : ''}${text.trim()}`);
+        }
+      },
+      onError: (msg) => {
+        toast({ title: 'Mic error', description: msg, variant: 'destructive' });
+        setIsListening(false);
+        speechRecRef.current = null;
+      },
+      onEnd: () => {
+        setIsListening(false);
+        speechRecRef.current = null;
+      },
+    });
+    if (!ctrl) return;
+    speechRecRef.current = ctrl;
+    setIsListening(true);
   };
 
   return (
@@ -436,7 +561,7 @@ export default function ChatPage() {
               <span className="font-mono">XP: {affinityXp}</span>
             </div>
           )}
-          {user?.subscription === 'pro' && (user.openRouterSelectedModelName || user.groqSelectedModelName) && (
+          {hasPaidSubscription(user) && (user.openRouterSelectedModelName || user.groqSelectedModelName) && (
             <div className="mt-1 flex items-center gap-2">
               <p className="text-xs text-muted-foreground">Model:</p>
               <p className="text-xs font-semibold text-foreground line-clamp-1">
@@ -583,8 +708,31 @@ export default function ChatPage() {
                   <AvatarFallback><Bot/></AvatarFallback>
                 </Avatar>
               )}
-              <div className={cn('max-w-[80%] rounded-2xl px-4 py-3', message.role === 'user' ? 'bg-primary text-white rounded-br-none' : 'bg-secondary text-secondary-foreground rounded-bl-none')}>
+              <div
+                className={cn(
+                  'max-w-[80%] rounded-2xl px-4 py-3',
+                  message.role === 'user'
+                    ? 'bg-primary text-white rounded-br-none'
+                    : 'relative bg-secondary text-secondary-foreground rounded-bl-none pr-12'
+                )}
+              >
                 <MessageContent content={message.content} />
+                {message.role === 'model' && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute bottom-2 right-2 h-8 w-8 text-secondary-foreground/80 hover:text-secondary-foreground"
+                    aria-label={ttsActiveMessageId === message.id ? 'Stop speech' : 'Listen'}
+                    onClick={() => handleTtsToggle(message)}
+                  >
+                    {ttsActiveMessageId === message.id ? (
+                      <Square className="h-4 w-4 fill-current" />
+                    ) : (
+                      <Volume2 className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
               </div>
                {message.role === 'user' && user && (
                 <Avatar className="h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0">
@@ -615,6 +763,19 @@ export default function ChatPage() {
                   <div className="flex gap-1 mt-2 border rounded-full bg-background/50 p-0.5">
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopy(messages[messages.length-1].content)}>
                       <Copy className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      aria-label="Listen"
+                      onClick={() => handleTtsToggle(messages[messages.length - 1])}
+                    >
+                      {ttsActiveMessageId === messages[messages.length - 1].id ? (
+                        <Square className="h-4 w-4 fill-current" />
+                      ) : (
+                        <Volume2 className="h-4 w-4" />
+                      )}
                     </Button>
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleRegenerate}>
                       <RefreshCw className="h-4 w-4" />
@@ -669,7 +830,17 @@ export default function ChatPage() {
                 style={{maxHeight: '120px'}}
               />
               <div className="absolute right-2 bottom-1 flex items-center">
-                  <Button type="button" variant="ghost" size="icon" disabled={isLoading} className="h-8 w-8"><Mic/></Button>
+                  <Button
+                    type="button"
+                    variant={isListening ? 'destructive' : 'ghost'}
+                    size="icon"
+                    disabled={isLoading}
+                    className="h-8 w-8"
+                    aria-label={isListening ? 'Stop listening' : 'Speak to type'}
+                    onClick={toggleSpeechInput}
+                  >
+                    <Mic />
+                  </Button>
                   <Button type="button" variant="ghost" size="icon" disabled={isLoading} className="h-8 w-8"><Paperclip/></Button>
                   <Button type="submit" size="icon" className="h-8 w-8 rounded-full" disabled={isLoading || !input.trim()}>
                     <Send className="h-4 w-4"/>

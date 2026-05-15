@@ -6,7 +6,7 @@ import { useUser } from '@/lib/hooks/use-user';
 import { Card, CardContent } from '@/components/ui/card';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Button } from '@/components/ui/button';
-import { Flame, Gift, ImageIcon, Sparkles } from 'lucide-react';
+import { Flame, Gift, ImageIcon, Megaphone, Sparkles } from 'lucide-react';
 import Autoplay from "embla-carousel-autoplay";
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -15,6 +15,13 @@ import { useFirestore } from '@/firebase';
 import { collection, limit, orderBy, query } from 'firebase/firestore';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import type { GeneratedImage } from '@/types';
+import { getEntitlements } from '@/lib/entitlements';
+
+type AnnouncementBanner = {
+  id: string;
+  title: string;
+  body: string;
+};
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -57,21 +64,38 @@ export default function DashboardPage() {
     router.push(`/chat/${newChatId}?prompt=${encodeURIComponent(prompt)}`);
   };
 
+  const uid = user?.uid;
+
+  const imagesQuery = useMemo(() => {
+    if (!uid) return null;
+    return query(
+      collection(firestore, 'users', uid, 'images'),
+      orderBy('createdAt', 'desc'),
+      limit(3)
+    );
+  }, [firestore, uid]);
+
+  const announcementQuery = useMemo(
+    () => query(collection(firestore, 'announcements'), orderBy('createdAt', 'desc'), limit(1)),
+    [firestore]
+  );
+
+  const { data: images } = useCollection<GeneratedImage>(imagesQuery);
+  const { data: announcements } = useCollection<AnnouncementBanner>(announcementQuery);
+
   if (!user) {
     return null; // Layout handles redirect
   }
 
   const personaName = user.gender === 'Male' ? 'Khangi AI' : 'Jawra AI';
 
-  const imagesQuery = useMemo(() => {
-    return query(
-      collection(firestore, 'users', user.uid, 'images'),
-      orderBy('createdAt', 'desc'),
-      limit(3)
-    );
-  }, [firestore, user.uid]);
-
-  const { data: images } = useCollection<GeneratedImage>(imagesQuery);
+  const planId = user.planId ?? (user.subscription === 'pro' ? 'pro' : 'basic');
+  const ent = getEntitlements(planId);
+  const msgLimit = user.dailyMessageLimit ?? ent.dailyMessageLimit;
+  const msgUsed = user.dailyMessageUsed ?? 0;
+  const imgLimit = user.dailyImageLimit ?? ent.dailyImageLimit;
+  const imgUsed = user.dailyImageUsed ?? 0;
+  const latestAnnouncement = announcements?.[0];
 
   return (
     <div className="flex flex-col h-full p-4 md:p-8 space-y-8">
@@ -93,7 +117,70 @@ export default function DashboardPage() {
             <Link href="/referrals">Referral Hub</Link>
           </Button>
         </div>
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Button asChild variant="outline" className="h-auto justify-start py-3 flex-col items-start gap-1">
+            <Link href="/voice-studio">
+              <span className="text-xs text-muted-foreground">Listen</span>
+              <span className="font-semibold">Text to speech</span>
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="h-auto justify-start py-3 flex-col items-start gap-1">
+            <Link href="/image-gen">
+              <span className="text-xs text-muted-foreground">Create</span>
+              <span className="font-semibold">Image studio</span>
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="h-auto justify-start py-3 flex-col items-start gap-1">
+            <Link href="/characters">
+              <span className="text-xs text-muted-foreground">Play</span>
+              <span className="font-semibold">Characters</span>
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="h-auto justify-start py-3 flex-col items-start gap-1">
+            <Link href="/subscription">
+              <span className="text-xs text-muted-foreground">Billing</span>
+              <span className="font-semibold">Subscription</span>
+            </Link>
+          </Button>
+        </div>
       </header>
+
+      {latestAnnouncement ? (
+        <Card className="border-accent/30 bg-accent/5">
+          <CardContent className="p-4 md:p-5 flex gap-3 items-start">
+            <Megaphone className="h-5 w-5 text-accent shrink-0 mt-0.5" />
+            <div className="space-y-1 min-w-0">
+              <p className="font-semibold text-sm md:text-base">{latestAnnouncement.title}</p>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{latestAnnouncement.body}</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <Card>
+        <CardContent className="p-4 md:p-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+          <div className="rounded-lg border bg-muted/30 p-3">
+            <p className="text-muted-foreground">Messages today</p>
+            <p className="text-lg font-semibold mt-1">
+              {msgUsed} / {msgLimit}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">Bonus pool: {user.bonusMessagesBalance ?? 0}</p>
+          </div>
+          <div className="rounded-lg border bg-muted/30 p-3">
+            <p className="text-muted-foreground">Images today</p>
+            <p className="text-lg font-semibold mt-1">
+              {imgUsed} / {imgLimit}
+            </p>
+          </div>
+          <div className="rounded-lg border bg-muted/30 p-3 sm:col-span-2">
+            <p className="text-muted-foreground">Plan</p>
+            <p className="text-lg font-semibold mt-1 capitalize">{planId}</p>
+            <Button asChild size="sm" variant="link" className="h-auto p-0 mt-2">
+              <Link href="/subscription">Manage subscription</Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="border-primary/20 bg-card/70">
         <CardContent className="p-4 md:p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

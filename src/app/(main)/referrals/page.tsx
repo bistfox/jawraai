@@ -3,9 +3,9 @@
 import * as React from 'react';
 import { useUser } from '@/lib/hooks/use-user';
 import { useFirestore } from '@/firebase';
-import { collection, limit, query, where } from 'firebase/firestore';
+import { collection, limit, orderBy, query } from 'firebase/firestore';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import type { ReferralRecord } from '@/types';
+import type { LeaderboardEntry } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -22,48 +22,24 @@ export default function ReferralsPage() {
   const weeklyQuery = React.useMemo(
     () =>
       query(
-        collection(firestore, 'referrals'),
-        where('status', '==', 'completed'),
-        limit(300)
+        collection(firestore, 'leaderboard_week', weeklyKey, 'entries'),
+        orderBy('score', 'desc'),
+        limit(20)
       ),
-    [firestore]
+    [firestore, weeklyKey]
   );
   const monthlyQuery = React.useMemo(
     () =>
       query(
-        collection(firestore, 'referrals'),
-        where('status', '==', 'completed'),
-        limit(500)
+        collection(firestore, 'leaderboard_month', monthlyKey, 'entries'),
+        orderBy('score', 'desc'),
+        limit(20)
       ),
-    [firestore]
+    [firestore, monthlyKey]
   );
 
-  const { data: weeklyRecords } = useCollection<ReferralRecord>(weeklyQuery);
-  const { data: monthlyRecords } = useCollection<ReferralRecord>(monthlyQuery);
-
-  const weekly = React.useMemo(() => {
-    const map = new Map<string, { name: string; score: number }>();
-    for (const r of weeklyRecords ?? []) {
-      if (r.weekKey !== weeklyKey) continue;
-      const key = r.referrerUid;
-      const existing = map.get(key);
-      if (existing) existing.score += 1;
-      else map.set(key, { name: r.referrerUsername ?? 'User', score: 1 });
-    }
-    return Array.from(map.values()).sort((a, b) => b.score - a.score).slice(0, 20);
-  }, [weeklyRecords, weeklyKey]);
-
-  const monthly = React.useMemo(() => {
-    const map = new Map<string, { name: string; score: number }>();
-    for (const r of monthlyRecords ?? []) {
-      if (r.monthKey !== monthlyKey) continue;
-      const key = r.referrerUid;
-      const existing = map.get(key);
-      if (existing) existing.score += 1;
-      else map.set(key, { name: r.referrerUsername ?? 'User', score: 1 });
-    }
-    return Array.from(map.values()).sort((a, b) => b.score - a.score).slice(0, 20);
-  }, [monthlyRecords, monthlyKey]);
+  const { data: weekly } = useCollection<LeaderboardEntry>(weeklyQuery);
+  const { data: monthly } = useCollection<LeaderboardEntry>(monthlyQuery);
 
   if (!user) return null;
 
@@ -116,12 +92,21 @@ export default function ReferralsPage() {
             <CardTitle>Weekly Leaderboard</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {weekly.map((u, idx) => (
-              <div key={`${u.name}-${idx}`} className="flex items-center justify-between rounded-lg border p-2 text-sm">
-                <span>{idx + 1}. {u.name}</span>
-                <span>{u.score}</span>
-              </div>
-            ))}
+            {(weekly ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground">No scores this week yet. Be the first referrer.</p>
+            ) : (
+              (weekly ?? []).map((row, idx) => (
+                <div
+                  key={row.id}
+                  className="flex items-center justify-between rounded-lg border p-2 text-sm"
+                >
+                  <span>
+                    {idx + 1}. {row.username}
+                  </span>
+                  <span>{row.score}</span>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -129,16 +114,24 @@ export default function ReferralsPage() {
             <CardTitle>Monthly Leaderboard</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {monthly.map((u, idx) => (
-              <div key={`${u.name}-${idx}`} className="flex items-center justify-between rounded-lg border p-2 text-sm">
-                <span>{idx + 1}. {u.name}</span>
-                <span>{u.score}</span>
-              </div>
-            ))}
+            {(monthly ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground">No scores this month yet.</p>
+            ) : (
+              (monthly ?? []).map((row, idx) => (
+                <div
+                  key={row.id}
+                  className="flex items-center justify-between rounded-lg border p-2 text-sm"
+                >
+                  <span>
+                    {idx + 1}. {row.username}
+                  </span>
+                  <span>{row.score}</span>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
       </div>
     </div>
   );
 }
-

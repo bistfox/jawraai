@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { Home, MessageSquare, PlusSquare, Settings, User as UserIcon, LogOut, Bot, Sparkles, CreditCard, Users, Gift } from 'lucide-react';
+import { Home, MessageSquare, PlusSquare, Settings, User as UserIcon, LogOut, Bot, Sparkles, CreditCard, Users, Gift, Image as ImageIconLucide, Volume2 } from 'lucide-react';
 import {
   SidebarProvider,
   Sidebar,
@@ -96,6 +96,16 @@ export default function MainAppLayout({
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname.startsWith('/characters')} tooltip={{children: 'Characters'}}>
                 <Link href="/characters"><Users /><span>Characters</span></Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname === '/image-gen'} tooltip={{children: 'Image Generator'}}>
+                <Link href="/image-gen"><ImageIconLucide /><span>Image Gen</span></Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname === '/voice-studio'} tooltip={{children: 'Text to speech'}}>
+                <Link href="/voice-studio"><Volume2 /><span>Voice / TTS</span></Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
              <SidebarMenuItem>
